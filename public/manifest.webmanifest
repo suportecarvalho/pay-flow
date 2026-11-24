@@ -1,0 +1,19 @@
+{
+  "name": "PayFlow - Organize seus boletos",
+  "short_name": "PayFlow",
+  "description": "Organize seus boletos em um só lugar.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FF941A",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
