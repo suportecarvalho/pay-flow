@@ -1,6 +1,6 @@
 {
-  "name": "PayFlow - Organize seus boletos",
-  "short_name": "PayFlow",
+  "name": "PayBoletos - Organize seus boletos",
+  "short_name": "PayBoletos",
   "description": "Organize seus boletos em um só lugar.",
   "start_url": "/",
   "display": "standalone",

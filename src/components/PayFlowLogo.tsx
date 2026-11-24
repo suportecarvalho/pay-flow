@@ -62,10 +62,10 @@ export function PayFlowLogo({ size = 'lg' }: PayFlowLogoProps) {
     <div className="flex flex-col items-center select-none">
       <PayFlowBarcodeIcon size={size} />
 
-      {/* PayFlow Wordmark */}
+      {/* PayBoletos Wordmark */}
       <div className={`mt-5 font-lexend tracking-tight ${textSizes[size]}`}>
         <span className="font-semibold text-[#FF941A]">Pay</span>
-        <span className="font-normal text-[#585666]">Flow</span>
+        <span className="font-normal text-[#585666]">Boletos</span>
       </div>
     </div>
   );
