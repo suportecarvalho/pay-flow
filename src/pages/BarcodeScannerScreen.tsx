@@ -1,7 +1,6 @@
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { BarcodeFormat, DecodeHintType } from '@zxing/library';
-import { ArrowUp } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { scanImageData } from '@undecaf/zbar-wasm';
+import { ArrowUp, ImagePlus } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { isValidBoletoLength } from '../utils/boletoParser';
 
 interface BarcodeScannerScreenProps {
@@ -23,15 +22,49 @@ interface NativeBarcodeDetectorConstructor {
   getSupportedFormats?: () => Promise<string[]>;
 }
 
+async function decodeCanvasWithEngines(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  nativeDetector: NativeBarcodeDetector | null
+): Promise<string[]> {
+  const candidates: string[] = [];
+
+  if (nativeDetector) {
+    try {
+      const results = await nativeDetector.detect(canvas);
+      for (const item of results) {
+        if (item.rawValue) candidates.push(item.rawValue.trim());
+      }
+    } catch {
+      // Fall through to ZBar
+    }
+  }
+
+  try {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const symbols = await scanImageData(imageData);
+    for (const sym of symbols) {
+      const text = sym.decode().trim();
+      if (text) candidates.push(text);
+    }
+  } catch {
+    // Ignore ZBar frame error
+  }
+
+  return candidates;
+}
+
 export function BarcodeScannerScreen({
   onBack,
   onManualInsert,
   onScanSuccess,
 }: BarcodeScannerScreenProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasCamera, setHasCamera] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [scanFailed, setScanFailed] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState('');
   const onScanSuccessRef = useRef(onScanSuccess);
   onScanSuccessRef.current = onScanSuccess;
 
@@ -44,32 +77,31 @@ export function BarcodeScannerScreen({
     let lastCandidate = '';
     let candidateHits = 0;
 
-    function handleDecoded(rawText: string | undefined): boolean {
-      const text = rawText?.trim();
-      if (!text) return false;
+    function handleCandidates(candidates: string[]): boolean {
+      for (const text of candidates) {
+        if (!text) continue;
 
-      if (isValidBoletoLength(text)) {
-        active = false;
-        onScanSuccessRef.current(text);
-        return true;
-      }
-
-      // Accept non-boleto test barcodes only if confirmed on 2 consecutive frames
-      const digitsOnly = text.replace(/\D/g, '');
-      if (digitsOnly.length >= 8) {
-        if (text === lastCandidate) {
-          candidateHits += 1;
-        } else {
-          lastCandidate = text;
-          candidateHits = 1;
-        }
-        if (candidateHits >= 2) {
+        if (isValidBoletoLength(text)) {
           active = false;
           onScanSuccessRef.current(text);
           return true;
         }
-      }
 
+        const digitsOnly = text.replace(/\D/g, '');
+        if (digitsOnly.length >= 8) {
+          if (text === lastCandidate) {
+            candidateHits += 1;
+          } else {
+            lastCandidate = text;
+            candidateHits = 1;
+          }
+          if (candidateHits >= 2) {
+            active = false;
+            onScanSuccessRef.current(text);
+            return true;
+          }
+        }
+      }
       return false;
     }
 
@@ -113,7 +145,6 @@ export function BarcodeScannerScreen({
             });
         }
 
-        // Prepare native BarcodeDetector if available
         let nativeDetector: NativeBarcodeDetector | null = null;
         const DetectorCtor = (
           window as unknown as {
@@ -136,19 +167,8 @@ export function BarcodeScannerScreen({
           }
         }
 
-        // Prepare ZXing reader (strictly 44/47/48 for ITF to prevent false reads)
-        const hints = new Map();
-        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-          BarcodeFormat.ITF,
-          BarcodeFormat.CODE_128,
-        ]);
-        hints.set(DecodeHintType.ALLOWED_LENGTHS, new Int32Array([44, 47, 48]));
-        hints.set(DecodeHintType.TRY_HARDER, true);
-
-        const reader = new BrowserMultiFormatReader(hints);
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        let scanRotated = false;
         let isProcessing = false;
 
         intervalId = window.setInterval(async () => {
@@ -159,44 +179,20 @@ export function BarcodeScannerScreen({
 
           isProcessing = true;
           try {
-            scanRotated = !scanRotated;
-            if (scanRotated) {
-              canvas.width = vh;
-              canvas.height = vw;
-              ctx.save();
-              ctx.translate(vh / 2, vw / 2);
-              ctx.rotate(Math.PI / 2);
-              ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
-              ctx.restore();
-            } else {
-              canvas.width = vw;
-              canvas.height = vh;
-              ctx.drawImage(video, 0, 0, vw, vh);
-            }
+            canvas.width = vw;
+            canvas.height = vh;
+            ctx.drawImage(video, 0, 0, vw, vh);
 
-            // 1. Try native BarcodeDetector on canvas (works reliably across Android Chrome)
-            if (nativeDetector) {
-              try {
-                const results = await nativeDetector.detect(canvas);
-                for (const item of results) {
-                  if (handleDecoded(item.rawValue)) return;
-                }
-              } catch {
-                // Fall through to ZXing
-              }
-            }
-
-            // 2. Fallback to ZXing on the same canvas
-            try {
-              const result = reader.decodeFromCanvas(canvas);
-              if (handleDecoded(result.getText())) return;
-            } catch {
-              // NotFoundException on frames without a valid barcode
-            }
+            const candidates = await decodeCanvasWithEngines(
+              canvas,
+              ctx,
+              nativeDetector
+            );
+            handleCandidates(candidates);
           } finally {
             isProcessing = false;
           }
-        }, 180);
+        }, 160);
       } catch {
         if (active) {
           setCameraError('Não foi possível acessar a câmera.');
@@ -217,14 +213,71 @@ export function BarcodeScannerScreen({
     };
   }, [scanFailed]);
 
-  // Show "Tente novamente" sheet if no barcode is scanned within 20 seconds
+  // Show "Tente novamente" sheet if no barcode is scanned within 25 seconds
   useEffect(() => {
     if (scanFailed) return;
     const timer = setTimeout(() => {
       setScanFailed(true);
-    }, 20000);
+    }, 25000);
     return () => clearTimeout(timer);
   }, [scanFailed]);
+
+  const handlePhotoSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPhotoStatus('Lendo imagem...');
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+
+      // Try normal and 90° rotated on the uploaded/captured photo
+      for (const rotated of [false, true]) {
+        if (rotated) {
+          canvas.width = bitmap.height;
+          canvas.height = bitmap.width;
+          ctx.save();
+          ctx.translate(bitmap.height / 2, bitmap.width / 2);
+          ctx.rotate(Math.PI / 2);
+          ctx.drawImage(
+            bitmap,
+            -bitmap.width / 2,
+            -bitmap.height / 2,
+            bitmap.width,
+            bitmap.height
+          );
+          ctx.restore();
+        } else {
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          ctx.drawImage(bitmap, 0, 0);
+        }
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const symbols = await scanImageData(imageData);
+        const match =
+          symbols.find((s) => isValidBoletoLength(s.decode())) ?? symbols[0];
+
+        if (match) {
+          const text = match.decode().trim();
+          if (text) {
+            setPhotoStatus('');
+            onScanSuccessRef.current(text);
+            return;
+          }
+        }
+      }
+
+      setPhotoStatus('Nenhum código encontrado na foto.');
+      setTimeout(() => setPhotoStatus(''), 3000);
+    } catch {
+      setPhotoStatus('Erro ao ler imagem.');
+      setTimeout(() => setPhotoStatus(''), 3000);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden relative">
@@ -244,6 +297,15 @@ export function BarcodeScannerScreen({
           }`}
         />
 
+        {/* Hidden Photo Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => void handlePhotoSelected(e)}
+          className="hidden"
+        />
+
         {/* Left White Vertical Action Bar */}
         <button
           type="button"
@@ -256,8 +318,18 @@ export function BarcodeScannerScreen({
           </span>
         </button>
 
-        {/* Dark Left Overlay */}
-        <div className="relative z-10 flex-1 bg-black/65" />
+        {/* Dark Left Overlay + Photo fallback button */}
+        <div className="relative z-10 flex-1 bg-black/65 flex items-end justify-center pb-6">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            title="Ler de foto ou print"
+            aria-label="Ler código de barras de foto"
+            className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <ImagePlus size={18} strokeWidth={1.8} />
+          </button>
+        </div>
 
         {/* Center Scan Window (transparent over camera!) */}
         <div
@@ -269,9 +341,9 @@ export function BarcodeScannerScreen({
             <div className="w-[1.5px] h-[75%] bg-[#FF941A]/70 animate-pulse" />
           )}
 
-          {cameraError && (
-            <span className="rotate-90 whitespace-nowrap font-inter text-[11px] text-white/75 px-2">
-              {cameraError}
+          {(cameraError || photoStatus) && (
+            <span className="rotate-90 whitespace-nowrap font-inter text-[11px] text-white/85 px-2">
+              {photoStatus || cameraError}
             </span>
           )}
         </div>
