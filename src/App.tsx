@@ -208,9 +208,7 @@ export function App() {
             setScannedBarcode('');
             setScreen('app');
           }}
-          onSubmit={(data) => {
-            void handleCreateBoleto(data);
-          }}
+          onSubmit={handleCreateBoleto}
         />
       )}
     </div>

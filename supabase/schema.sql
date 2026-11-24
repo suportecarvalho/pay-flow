@@ -13,6 +13,9 @@ create table if not exists public.boletos (
 create index if not exists idx_boletos_user_id on public.boletos (user_id);
 
 -- Para uso inicial com Google Identity Services no frontend (chave anon):
+grant usage on schema public to anon, authenticated;
+grant all on table public.boletos to anon, authenticated;
+
 alter table public.boletos enable row level security;
 
 create policy "Permitir acesso aos boletos via API"

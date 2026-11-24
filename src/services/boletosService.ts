@@ -98,7 +98,10 @@ export async function createUserBoleto(
     .single();
 
   if (error || !data) {
-    throw new Error('Não foi possível salvar o boleto no Supabase.');
+    console.error('Supabase insert error:', error);
+    throw new Error(
+      error?.message || 'Não foi possível salvar o boleto no Supabase.'
+    );
   }
 
   return mapRowToBoleto(data as BoletoRow);

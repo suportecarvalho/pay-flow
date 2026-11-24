@@ -10,7 +10,7 @@ interface InsertBoletoScreenProps {
     dueDate: string;
     value: number;
     barcode?: string;
-  }) => void;
+  }) => Promise<void> | void;
 }
 
 function formatDueDateMask(raw: string): string {
@@ -57,9 +57,12 @@ export function InsertBoletoScreen({
   );
   const [barcode, setBarcode] = useState(initialBarcode);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     const trimmedName = name.trim();
     const numericValue = parseCurrencyInput(valueText);
 
@@ -76,12 +79,22 @@ export function InsertBoletoScreen({
       return;
     }
 
-    onSubmit({
-      name: trimmedName,
-      dueDate: dueDate.trim(),
-      value: numericValue,
-      barcode: barcode.trim() || undefined,
-    });
+    setSubmitting(true);
+    setError('');
+    try {
+      await onSubmit({
+        name: trimmedName,
+        dueDate: dueDate.trim(),
+        value: numericValue,
+        barcode: barcode.trim() || undefined,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Erro ao cadastrar o boleto.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -204,9 +217,10 @@ export function InsertBoletoScreen({
 
         <button
           type="submit"
-          className="flex items-center justify-center font-inter text-[15px] font-medium text-[#FF941A] hover:bg-[#FAFAFC] active:bg-[#FFF5E8] transition-colors cursor-pointer"
+          disabled={submitting}
+          className="flex items-center justify-center font-inter text-[15px] font-medium text-[#FF941A] hover:bg-[#FAFAFC] active:bg-[#FFF5E8] disabled:opacity-50 transition-colors cursor-pointer"
         >
-          Cadastrar
+          {submitting ? 'Cadastrando...' : 'Cadastrar'}
         </button>
       </div>
     </form>
