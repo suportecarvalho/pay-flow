@@ -142,7 +142,7 @@ export function App() {
   };
 
   return (
-    <div className="w-full max-w-[430px] h-[100dvh] sm:h-[844px] sm:rounded-[36px] sm:shadow-2xl bg-white flex flex-col overflow-hidden relative">
+    <div className="w-full h-[100dvh] lg:max-w-[430px] lg:h-[844px] lg:rounded-[36px] lg:shadow-2xl bg-white flex flex-col overflow-hidden relative">
       {screen === 'splash' && <SplashScreen />}
 
       {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
