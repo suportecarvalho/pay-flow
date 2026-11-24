@@ -46,7 +46,7 @@ export function InsertBoletoScreen({
     : null;
 
   const [name, setName] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(() => parsedInitial?.dueDate ?? '');
   const [valueText, setValueText] = useState(() =>
     parsedInitial?.value
       ? `R$ ${parsedInitial.value.toLocaleString('pt-BR', {
