@@ -41,6 +41,37 @@ export function BarcodeScannerScreen({
     let stream: MediaStream | null = null;
     let intervalId: number | undefined;
     let active = true;
+    let lastCandidate = '';
+    let candidateHits = 0;
+
+    function handleDecoded(rawText: string | undefined): boolean {
+      const text = rawText?.trim();
+      if (!text) return false;
+
+      if (isValidBoletoLength(text)) {
+        active = false;
+        onScanSuccessRef.current(text);
+        return true;
+      }
+
+      // Accept non-boleto test barcodes only if confirmed on 2 consecutive frames
+      const digitsOnly = text.replace(/\D/g, '');
+      if (digitsOnly.length >= 8) {
+        if (text === lastCandidate) {
+          candidateHits += 1;
+        } else {
+          lastCandidate = text;
+          candidateHits = 1;
+        }
+        if (candidateHits >= 2) {
+          active = false;
+          onScanSuccessRef.current(text);
+          return true;
+        }
+      }
+
+      return false;
+    }
 
     async function startScanner() {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -71,7 +102,6 @@ export function BarcodeScannerScreen({
         setHasCamera(true);
         setCameraError('');
 
-        // Try continuous autofocus if supported by the mobile camera track
         const track = stream.getVideoTracks()[0];
         if (track && 'applyConstraints' in track) {
           track
@@ -83,6 +113,8 @@ export function BarcodeScannerScreen({
             });
         }
 
+        // Prepare native BarcodeDetector if available
+        let nativeDetector: NativeBarcodeDetector | null = null;
         const DetectorCtor = (
           window as unknown as {
             BarcodeDetector?: NativeBarcodeDetectorConstructor;
@@ -90,35 +122,21 @@ export function BarcodeScannerScreen({
         ).BarcodeDetector;
 
         if (DetectorCtor) {
-          let formats = ['itf', 'code_128'];
-          if (DetectorCtor.getSupportedFormats) {
-            const supported = await DetectorCtor.getSupportedFormats();
-            formats = formats.filter((f) => supported.includes(f));
-          }
-
-          if (formats.length > 0) {
-            const detector = new DetectorCtor({ formats });
-            intervalId = window.setInterval(async () => {
-              if (!active || video.readyState < 2) return;
-              try {
-                const results = await detector.detect(video);
-                for (const item of results) {
-                  const text = item.rawValue?.trim();
-                  if (text && isValidBoletoLength(text)) {
-                    active = false;
-                    onScanSuccessRef.current(text);
-                    return;
-                  }
-                }
-              } catch {
-                // Ignore frame detection error
-              }
-            }, 150);
-            return;
+          try {
+            let formats = ['itf', 'code_128', 'ean_13'];
+            if (DetectorCtor.getSupportedFormats) {
+              const supported = await DetectorCtor.getSupportedFormats();
+              formats = formats.filter((f) => supported.includes(f));
+            }
+            if (formats.length > 0) {
+              nativeDetector = new DetectorCtor({ formats });
+            }
+          } catch {
+            nativeDetector = null;
           }
         }
 
-        // Fallback: ZXing scanning both 0° and 90°-rotated frames with strict boleto length
+        // Prepare ZXing reader (strictly 44/47/48 for ITF to prevent false reads)
         const hints = new Map();
         hints.set(DecodeHintType.POSSIBLE_FORMATS, [
           BarcodeFormat.ITF,
@@ -129,41 +147,56 @@ export function BarcodeScannerScreen({
 
         const reader = new BrowserMultiFormatReader(hints);
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let scanRotated = false;
+        let isProcessing = false;
 
-        intervalId = window.setInterval(() => {
-          if (!active || !ctx || video.readyState < 2) return;
+        intervalId = window.setInterval(async () => {
+          if (!active || isProcessing || !ctx || video.readyState < 2) return;
           const vw = video.videoWidth;
           const vh = video.videoHeight;
           if (!vw || !vh) return;
 
-          scanRotated = !scanRotated;
-          if (scanRotated) {
-            canvas.width = vh;
-            canvas.height = vw;
-            ctx.save();
-            ctx.translate(vh / 2, vw / 2);
-            ctx.rotate(Math.PI / 2);
-            ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
-            ctx.restore();
-          } else {
-            canvas.width = vw;
-            canvas.height = vh;
-            ctx.drawImage(video, 0, 0, vw, vh);
-          }
-
+          isProcessing = true;
           try {
-            const result = reader.decodeFromCanvas(canvas);
-            const text = result.getText()?.trim();
-            if (text && isValidBoletoLength(text)) {
-              active = false;
-              onScanSuccessRef.current(text);
+            scanRotated = !scanRotated;
+            if (scanRotated) {
+              canvas.width = vh;
+              canvas.height = vw;
+              ctx.save();
+              ctx.translate(vh / 2, vw / 2);
+              ctx.rotate(Math.PI / 2);
+              ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
+              ctx.restore();
+            } else {
+              canvas.width = vw;
+              canvas.height = vh;
+              ctx.drawImage(video, 0, 0, vw, vh);
             }
-          } catch {
-            // NotFoundException on frames without a valid barcode
+
+            // 1. Try native BarcodeDetector on canvas (works reliably across Android Chrome)
+            if (nativeDetector) {
+              try {
+                const results = await nativeDetector.detect(canvas);
+                for (const item of results) {
+                  if (handleDecoded(item.rawValue)) return;
+                }
+              } catch {
+                // Fall through to ZXing
+              }
+            }
+
+            // 2. Fallback to ZXing on the same canvas
+            try {
+              const result = reader.decodeFromCanvas(canvas);
+              if (handleDecoded(result.getText())) return;
+            } catch {
+              // NotFoundException on frames without a valid barcode
+            }
+          } finally {
+            isProcessing = false;
           }
-        }, 200);
+        }, 180);
       } catch {
         if (active) {
           setCameraError('Não foi possível acessar a câmera.');
@@ -231,6 +264,11 @@ export function BarcodeScannerScreen({
           className="relative z-10 w-[38%] bg-transparent border-x border-white/25 flex items-center justify-center"
           aria-label="Área de leitura do código de barras"
         >
+          {/* Subtle vertical laser line inside scan window */}
+          {!cameraError && (
+            <div className="w-[1.5px] h-[75%] bg-[#FF941A]/70 animate-pulse" />
+          )}
+
           {cameraError && (
             <span className="rotate-90 whitespace-nowrap font-inter text-[11px] text-white/75 px-2">
               {cameraError}
