@@ -21,7 +21,7 @@ export function HomeScreen({
   const unpaidBoletos = boletos.filter((b) => !b.paid);
 
   return (
-    <div className="flex-1 flex flex-col bg-white overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
       <AppHeader userName={userName} avatarUrl={avatarUrl} onLogout={onLogout}>
         {/* Overlapping Dark Summary Card */}
         <div className="absolute left-6 right-6 -bottom-9 bg-[#585666] rounded-[5px] px-5 py-4 flex items-center shadow-sm">
@@ -65,7 +65,7 @@ export function HomeScreen({
       </AppHeader>
 
       {/* Meus boletos list */}
-      <main className="relative flex-1 flex flex-col pt-16 px-6 overflow-hidden">
+      <main className="relative flex-1 min-h-0 flex flex-col pt-16 px-6 overflow-hidden">
         <div className="pb-4 border-b border-[#E3E3E6] shrink-0">
           <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
             Meus boletos
@@ -73,8 +73,8 @@ export function HomeScreen({
         </div>
 
         {/* Soft bottom fade above total bar */}
-        <div className="relative flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-10 space-y-1">
+        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pt-2 pb-10 space-y-1">
             {unpaidBoletos.length === 0 ? (
               <div className="py-12 text-center text-sm text-[#706E7A]">
                 Nenhum boleto pendente no momento.
