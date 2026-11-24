@@ -7,16 +7,20 @@ import { HomeScreen } from './pages/HomeScreen';
 import { InsertBoletoScreen } from './pages/InsertBoletoScreen';
 import { LoginScreen } from './pages/LoginScreen';
 import { SplashScreen } from './pages/SplashScreen';
+import {
+  createUserBoleto,
+  deleteUserBoleto,
+  fetchUserBoletos,
+  loadLocalBoletos,
+  saveLocalBoletos,
+  setBoletoPaidStatus,
+} from './services/boletosService';
 import type { Boleto } from './types/boleto';
 import type { AuthUser } from './types/user';
 
 type Screen = 'splash' | 'login' | 'app' | 'scanner' | 'insert_boleto';
 
 const USER_STORAGE_KEY = 'payflow_user_v1';
-
-function getBoletosStorageKey(userId: string): string {
-  return `payflow_boletos_v1_${userId}`;
-}
 
 function loadUserFromStorage(): AuthUser | null {
   try {
@@ -30,19 +34,6 @@ function loadUserFromStorage(): AuthUser | null {
   return null;
 }
 
-function loadBoletosForUser(userId: string | undefined): Boleto[] {
-  if (!userId) return [];
-  try {
-    const saved = localStorage.getItem(getBoletosStorageKey(userId));
-    if (saved) {
-      return JSON.parse(saved) as Boleto[];
-    }
-  } catch {
-    // Ignore storage errors
-  }
-  return [];
-}
-
 export function App() {
   const [screen, setScreen] = useState<Screen>('splash');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -50,20 +41,27 @@ export function App() {
   const [scannedBarcode, setScannedBarcode] = useState('');
 
   const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage);
-  const [boletos, setBoletos] = useState<Boleto[]>(() =>
-    loadBoletosForUser(loadUserFromStorage()?.id)
-  );
+  const [boletos, setBoletos] = useState<Boleto[]>(() => {
+    const savedUser = loadUserFromStorage();
+    return savedUser ? loadLocalBoletos(savedUser.id) : [];
+  });
 
   useEffect(() => {
     if (!user) return;
-    try {
-      localStorage.setItem(
-        getBoletosStorageKey(user.id),
-        JSON.stringify(boletos)
-      );
-    } catch {
-      // Ignore storage errors
-    }
+    let active = true;
+    fetchUserBoletos(user.id).then((remoteBoletos) => {
+      if (active) {
+        setBoletos(remoteBoletos);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    saveLocalBoletos(user.id, boletos);
   }, [boletos, user]);
 
   useEffect(() => {
@@ -92,6 +90,9 @@ export function App() {
       prev.map((b) => (b.id === id ? { ...b, paid: true } : b))
     );
     setSelectedBoleto(null);
+    if (user) {
+      void setBoletoPaidStatus(user.id, id, true);
+    }
   };
 
   const handleMarkUnpaid = (id: string) => {
@@ -99,16 +100,21 @@ export function App() {
       prev.map((b) => (b.id === id ? { ...b, paid: false } : b))
     );
     setSelectedBoleto(null);
+    if (user) {
+      void setBoletoPaidStatus(user.id, id, false);
+    }
   };
 
   const handleDeleteBoleto = (id: string) => {
     setBoletos((prev) => prev.filter((b) => b.id !== id));
     setSelectedBoleto(null);
+    if (user) {
+      void deleteUserBoleto(user.id, id);
+    }
   };
 
   const handleLogin = (loggedUser: AuthUser) => {
-    const accountBoletos = loadBoletosForUser(loggedUser.id);
-    setBoletos(accountBoletos);
+    setBoletos(loadLocalBoletos(loggedUser.id));
     setUser(loggedUser);
     setScreen('app');
     setActiveTab('home');
@@ -119,6 +125,20 @@ export function App() {
     setBoletos([]);
     setSelectedBoleto(null);
     setScreen('login');
+  };
+
+  const handleCreateBoleto = async (data: {
+    name: string;
+    dueDate: string;
+    value: number;
+    barcode?: string;
+  }) => {
+    if (!user) return;
+    const created = await createUserBoleto(user.id, data);
+    setBoletos((prev) => [created, ...prev]);
+    setScannedBarcode('');
+    setActiveTab('home');
+    setScreen('app');
   };
 
   return (
@@ -189,18 +209,7 @@ export function App() {
             setScreen('app');
           }}
           onSubmit={(data) => {
-            const newBoleto: Boleto = {
-              id: String(Date.now()),
-              name: data.name,
-              dueDate: data.dueDate,
-              value: data.value,
-              barcode: data.barcode,
-              paid: false,
-            };
-            setBoletos((prev) => [newBoleto, ...prev]);
-            setScannedBarcode('');
-            setActiveTab('home');
-            setScreen('app');
+            void handleCreateBoleto(data);
           }}
         />
       )}
