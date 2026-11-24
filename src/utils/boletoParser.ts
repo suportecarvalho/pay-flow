@@ -74,3 +74,31 @@ export function isValidBoletoLength(rawCode: string): boolean {
   const len = rawCode.replace(/\D/g, '').length;
   return len === 44 || len === 47 || len === 48;
 }
+
+/**
+ * Returns true when a DD/MM/YY or DD/MM/YYYY due date is strictly before today.
+ */
+export function isBoletoOverdue(dueDate: string): boolean {
+  const parts = dueDate.trim().split('/');
+  if (parts.length !== 3) return false;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  let year = parseInt(parts[2], 10);
+
+  if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year)) {
+    return false;
+  }
+
+  if (parts[2].length === 2) {
+    year += 2000;
+  }
+
+  const due = new Date(year, month - 1, day);
+  due.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return due.getTime() < today.getTime();
+}
