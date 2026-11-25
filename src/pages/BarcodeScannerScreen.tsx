@@ -1,5 +1,5 @@
 import { scanImageData } from '@undecaf/zbar-wasm';
-import { ArrowLeft, ArrowUp, ImagePlus } from 'lucide-react';
+import { ArrowLeft, ImagePlus } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { isValidBoletoLength } from '../utils/boletoParser';
 
@@ -310,7 +310,7 @@ export function BarcodeScannerScreen({
       {/* Top Orange Strip */}
       <div
         className={`w-full bg-gradient-to-b from-[#FF941A] to-[#FFA436] shrink-0 ${
-          isLandscape ? 'h-4' : 'h-11'
+          isLandscape ? 'h-3' : 'h-11'
         }`}
       />
 
@@ -323,12 +323,8 @@ export function BarcodeScannerScreen({
         className="hidden"
       />
 
-      {/* Main Scanner Layout */}
-      <div
-        className={`flex-1 flex relative overflow-hidden ${
-          isLandscape ? 'flex-col-reverse' : 'flex-row'
-        }`}
-      >
+      {/* Main Scanner Layout (adapts cleanly to portrait & landscape) */}
+      <div className="flex-1 flex flex-col-reverse relative overflow-hidden">
         {/* Live Camera Video Background */}
         <video
           ref={videoRef}
@@ -340,30 +336,22 @@ export function BarcodeScannerScreen({
           }`}
         />
 
-        {/* White Action Bar (Left in portrait, Bottom in landscape) */}
+        {/* Bottom White Action Bar */}
         <button
           type="button"
           onClick={onManualInsert}
-          className={`relative z-10 bg-white hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors flex items-center justify-center shrink-0 cursor-pointer ${
-            isLandscape ? 'h-14 w-full' : 'w-14 h-full'
+          className={`relative z-10 w-full bg-white hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors flex items-center justify-center shrink-0 cursor-pointer ${
+            isLandscape ? 'h-12' : 'h-14'
           }`}
           aria-label="Inserir código do boleto"
         >
-          <span
-            className={`whitespace-nowrap font-inter text-[14px] text-[#585666] tracking-tight ${
-              isLandscape ? '' : 'rotate-90'
-            }`}
-          >
+          <span className="whitespace-nowrap font-inter text-[14px] text-[#585666] tracking-tight">
             Inserir código do boleto
           </span>
         </button>
 
-        {/* Dark Overlay + Photo fallback button */}
-        <div
-          className={`relative z-10 flex-1 bg-black/65 flex items-center justify-center ${
-            isLandscape ? 'flex-row px-6 justify-end' : 'items-end pb-6'
-          }`}
-        >
+        {/* Bottom Dark Overlay + Photo fallback button */}
+        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-end px-6">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -375,56 +363,36 @@ export function BarcodeScannerScreen({
           </button>
         </div>
 
-        {/* Center Scan Window (transparent over camera!) */}
+        {/* Center Horizontal Scan Window (transparent over camera!) */}
         <div
-          className={`relative z-10 bg-transparent flex items-center justify-center ${
-            isLandscape
-              ? 'h-[38%] w-full border-y border-white/25'
-              : 'w-[38%] h-full border-x border-white/25'
+          className={`relative z-10 w-full bg-transparent border-y border-white/25 flex items-center justify-center ${
+            isLandscape ? 'h-[44%]' : 'h-[34%]'
           }`}
           aria-label="Área de leitura do código de barras"
         >
           {!cameraError && (
-            <div
-              className={`bg-[#FF941A]/70 animate-pulse ${
-                isLandscape ? 'h-[1.5px] w-[75%]' : 'w-[1.5px] h-[75%]'
-              }`}
-            />
+            <div className="h-[1.5px] w-[78%] bg-[#FF941A]/70 animate-pulse" />
           )}
 
           {(cameraError || photoStatus) && (
-            <span
-              className={`whitespace-nowrap font-inter text-[11px] text-white/85 px-2 ${
-                isLandscape ? '' : 'rotate-90'
-              }`}
-            >
+            <span className="whitespace-nowrap font-inter text-[12px] text-white/90 px-3 text-center">
               {photoStatus || cameraError}
             </span>
           )}
         </div>
 
-        {/* Dark Overlay + Back Arrow + Instruction (Right in portrait, Top in landscape) */}
-        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-center">
+        {/* Top Dark Overlay + Back Arrow + Instruction */}
+        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-center px-12">
           <button
             type="button"
             onClick={onBack}
             aria-label="Voltar"
-            className={`absolute w-10 h-10 flex items-center justify-center text-white hover:opacity-75 transition-opacity cursor-pointer ${
-              isLandscape ? 'left-4 top-1/2 -translate-y-1/2' : 'top-5 right-5'
-            }`}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white hover:opacity-75 transition-opacity cursor-pointer"
           >
-            {isLandscape ? (
-              <ArrowLeft size={20} strokeWidth={1.8} />
-            ) : (
-              <ArrowUp size={20} strokeWidth={1.8} />
-            )}
+            <ArrowLeft size={20} strokeWidth={1.8} />
           </button>
 
-          <span
-            className={`whitespace-nowrap font-inter text-[14px] text-white tracking-tight ${
-              isLandscape ? '' : 'rotate-90'
-            }`}
-          >
+          <span className="whitespace-nowrap font-inter text-[14px] text-white tracking-tight text-center">
             Escaneie o código de barras do boleto
           </span>
         </div>
@@ -433,41 +401,25 @@ export function BarcodeScannerScreen({
       {/* "Tente novamente" Sheet Overlay */}
       {scanFailed && (
         <div
-          className={`absolute inset-0 z-30 flex bg-black/55 ${
-            isLandscape ? 'flex-col-reverse' : 'flex-row'
-          }`}
+          className="absolute inset-0 z-30 flex flex-col-reverse bg-black/55"
           role="dialog"
           aria-modal="true"
           aria-label="Não foi possível identificar um código de barras"
         >
           {/* White Sheet */}
           <div
-            className={`bg-white flex shadow-xl ${
-              isLandscape
-                ? 'w-full h-[55%] flex-col-reverse'
-                : 'w-[47%] h-full flex-row'
+            className={`w-full bg-white flex flex-col-reverse shadow-xl ${
+              isLandscape ? 'h-[62%]' : 'h-[42%]'
             }`}
           >
             {/* Action Buttons */}
-            <div
-              className={`border-[#E3E3E6] flex shrink-0 ${
-                isLandscape
-                  ? 'h-14 w-full border-t flex-row'
-                  : 'w-14 h-full border-r flex-col'
-              }`}
-            >
+            <div className="h-14 w-full border-t border-[#E3E3E6] flex flex-row shrink-0">
               <button
                 type="button"
                 onClick={() => setScanFailed(false)}
-                className={`flex-1 border-[#E3E3E6] flex items-center justify-center hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors cursor-pointer ${
-                  isLandscape ? 'border-r' : 'border-b'
-                }`}
+                className="flex-1 border-r border-[#E3E3E6] flex items-center justify-center hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors cursor-pointer"
               >
-                <span
-                  className={`whitespace-nowrap font-inter text-[14px] font-medium text-[#FF941A] ${
-                    isLandscape ? '' : 'rotate-90'
-                  }`}
-                >
+                <span className="whitespace-nowrap font-inter text-[14px] font-medium text-[#FF941A]">
                   Escanear novamente
                 </span>
               </button>
@@ -477,27 +429,19 @@ export function BarcodeScannerScreen({
                 onClick={onManualInsert}
                 className="flex-1 flex items-center justify-center hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors cursor-pointer"
               >
-                <span
-                  className={`whitespace-nowrap font-inter text-[14px] text-[#585666] ${
-                    isLandscape ? '' : 'rotate-90'
-                  }`}
-                >
+                <span className="whitespace-nowrap font-inter text-[14px] text-[#585666]">
                   Digitar código
                 </span>
               </button>
             </div>
 
             {/* Error Message */}
-            <div className="flex-1 flex items-center justify-center px-4 overflow-hidden">
-              <div
-                className={`text-center font-inter leading-[22px] ${
-                  isLandscape ? '' : 'rotate-90 whitespace-nowrap'
-                }`}
-              >
+            <div className="flex-1 flex items-center justify-center px-6 overflow-hidden">
+              <div className="text-center font-inter leading-[22px]">
                 <p className="font-semibold text-[14px] text-[#585666]">
                   Não foi possível identificar um código de barras.
                 </p>
-                <p className="text-[13px] text-[#706E7A]">
+                <p className="text-[13px] text-[#706E7A] mt-1">
                   Tente escanear novamente ou digite o código do seu boleto.
                 </p>
               </div>
