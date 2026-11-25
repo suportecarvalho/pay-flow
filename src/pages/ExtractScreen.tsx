@@ -19,6 +19,7 @@ export function ExtractScreen({
   onSelectBoleto,
 }: ExtractScreenProps) {
   const paidBoletos = boletos.filter((b) => b.paid);
+  const canScroll = paidBoletos.length > 4;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
@@ -35,7 +36,11 @@ export function ExtractScreen({
         </div>
 
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pt-2 pb-10 space-y-1">
+          <div
+            className={`min-h-0 max-h-[312px] no-scrollbar pt-2 pb-6 space-y-1 ${
+              canScroll ? 'flex-1 overflow-y-auto' : 'overflow-hidden'
+            }`}
+          >
             {paidBoletos.length === 0 ? (
               <div className="py-12 text-center text-sm text-[#706E7A]">
                 Nenhum boleto pago ainda.
