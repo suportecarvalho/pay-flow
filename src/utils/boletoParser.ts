@@ -75,6 +75,71 @@ export function isValidBoletoLength(rawCode: string): boolean {
   return len === 44 || len === 47 || len === 48;
 }
 
+function calcMod10(digits: string): number {
+  let sum = 0;
+  let weight = 2;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    const prod = parseInt(digits[i], 10) * weight;
+    sum += prod > 9 ? Math.floor(prod / 10) + (prod % 10) : prod;
+    weight = weight === 2 ? 1 : 2;
+  }
+  const mod = sum % 10;
+  return mod === 0 ? 0 : 10 - mod;
+}
+
+function calcBankMod11(digits: string): number {
+  let sum = 0;
+  let weight = 2;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    sum += parseInt(digits[i], 10) * weight;
+    weight = weight === 9 ? 2 : weight + 1;
+  }
+  const remainder = 11 - (sum % 11);
+  if (remainder === 0 || remainder === 1 || remainder === 10 || remainder === 11) {
+    return 1;
+  }
+  return remainder;
+}
+
+function calcUtilityMod11(digits: string): number {
+  let sum = 0;
+  let weight = 2;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    sum += parseInt(digits[i], 10) * weight;
+    weight = weight === 9 ? 2 : weight + 1;
+  }
+  const remainder = sum % 11;
+  if (remainder === 0 || remainder === 1) return 0;
+  if (remainder === 10) return 1;
+  return 11 - remainder;
+}
+
+/**
+ * Verifies FEBRABAN check digit on 44-digit bank and utility (concessionária) barcodes.
+ * Returns true for valid checksums so corrupted ITF reads are rejected.
+ */
+export function isValidFebrabanBarcode(rawCode: string): boolean {
+  const digits = rawCode.replace(/\D/g, '');
+  if (digits.length !== 44) return false;
+
+  if (digits.startsWith('8')) {
+    const indicator = digits[2];
+    const checkDigit = parseInt(digits[3], 10);
+    const body = digits.slice(0, 3) + digits.slice(4);
+    if (indicator === '6' || indicator === '8') {
+      return calcMod10(body) === checkDigit;
+    }
+    if (indicator === '7' || indicator === '9') {
+      return calcUtilityMod11(body) === checkDigit;
+    }
+    return false;
+  }
+
+  const checkDigit = parseInt(digits[4], 10);
+  const body = digits.slice(0, 4) + digits.slice(5);
+  return calcBankMod11(body) === checkDigit;
+}
+
 /**
  * Returns true when a DD/MM/YY or DD/MM/YYYY due date is strictly before today.
  */
