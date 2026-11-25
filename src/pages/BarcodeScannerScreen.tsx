@@ -1,4 +1,9 @@
-import { scanImageData } from '@undecaf/zbar-wasm';
+import {
+  ZBarConfigType,
+  ZBarScanner,
+  ZBarSymbolType,
+  scanImageData,
+} from '@undecaf/zbar-wasm';
 import { ArrowLeft, ImagePlus } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { isValidBoletoLength } from '../utils/boletoParser';
@@ -31,7 +36,8 @@ function getIsLandscape(): boolean {
 async function decodeCanvasWithEngines(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
-  nativeDetector: NativeBarcodeDetector | null
+  nativeDetector: NativeBarcodeDetector | null,
+  zbarScanner: ZBarScanner | null
 ): Promise<string[]> {
   const candidates: string[] = [];
 
@@ -48,7 +54,9 @@ async function decodeCanvasWithEngines(
 
   try {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const symbols = await scanImageData(imageData);
+    const symbols = zbarScanner
+      ? await scanImageData(imageData, zbarScanner)
+      : await scanImageData(imageData);
     for (const sym of symbols) {
       const text = sym.decode().trim();
       if (text) candidates.push(text);
@@ -194,6 +202,44 @@ export function BarcodeScannerScreen({
           }
         }
 
+        let zbarScanner: ZBarScanner | null = null;
+        try {
+          zbarScanner = await ZBarScanner.create();
+          // Configure ZBar specifically for 44-48 digit ITF boletos + Code128
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_NONE,
+            ZBarConfigType.ZBAR_CFG_ENABLE,
+            0
+          );
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_I25,
+            ZBarConfigType.ZBAR_CFG_ENABLE,
+            1
+          );
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_I25,
+            ZBarConfigType.ZBAR_CFG_MIN_LEN,
+            44
+          );
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_I25,
+            ZBarConfigType.ZBAR_CFG_MAX_LEN,
+            48
+          );
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_I25,
+            ZBarConfigType.ZBAR_CFG_UNCERTAINTY,
+            1
+          );
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_CODE128,
+            ZBarConfigType.ZBAR_CFG_ENABLE,
+            1
+          );
+        } catch {
+          zbarScanner = null;
+        }
+
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let isProcessing = false;
@@ -206,20 +252,35 @@ export function BarcodeScannerScreen({
 
           isProcessing = true;
           try {
-            canvas.width = vw;
-            canvas.height = vh;
-            ctx.drawImage(video, 0, 0, vw, vh);
+            // Crop the center 46% band where the scan window is, upscaling slightly if narrow
+            const cropH = Math.round(vh * 0.46);
+            const cropY = Math.round((vh - cropH) / 2);
+            const scale = vw < 1280 ? 1.5 : 1;
+            canvas.width = Math.round(vw * scale);
+            canvas.height = Math.round(cropH * scale);
+            ctx.drawImage(
+              video,
+              0,
+              cropY,
+              vw,
+              cropH,
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
 
             const candidates = await decodeCanvasWithEngines(
               canvas,
               ctx,
-              nativeDetector
+              nativeDetector,
+              zbarScanner
             );
             handleCandidates(candidates);
           } finally {
             isProcessing = false;
           }
-        }, 160);
+        }, 150);
       } catch {
         if (active) {
           setCameraError('Não foi possível acessar a câmera.');
@@ -351,13 +412,20 @@ export function BarcodeScannerScreen({
         </button>
 
         {/* Bottom Dark Overlay + Photo fallback button */}
-        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-end px-6">
+        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-between px-6">
+          {!isLandscape ? (
+            <span className="font-inter text-[12px] text-white/75">
+              Vire o celular na horizontal para ler melhor
+            </span>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             title="Ler de foto ou print"
             aria-label="Ler código de barras de foto"
-            className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <ImagePlus size={18} strokeWidth={1.8} />
           </button>
