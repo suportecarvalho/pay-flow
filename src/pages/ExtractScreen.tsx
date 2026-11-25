@@ -117,8 +117,14 @@ export function ExtractScreen({
     const total = filteredBoletos.reduce((sum, b) => sum + b.value, 0);
     rows.push(`"TOTAL";;R$ ${formatCurrencyBRL(total)};;`);
 
-    const csv = '\uFEFF' + [header, ...rows].join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csvText = [header, ...rows].join('\r\n');
+    const bytes = new Uint8Array(csvText.length);
+    for (let i = 0; i < csvText.length; i++) {
+      const code = csvText.charCodeAt(i);
+      bytes[i] = code <= 0xff ? code : 0x3f;
+    }
+
+    const blob = new Blob([bytes], { type: 'text/csv;charset=windows-1252;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
