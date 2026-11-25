@@ -102,3 +102,41 @@ export function isBoletoOverdue(dueDate: string): boolean {
 
   return due.getTime() < today.getTime();
 }
+
+/**
+ * Advances a DD/MM/YY or DD/MM/YYYY due date by 1 month,
+ * clamping to the last day of the target month when necessary.
+ */
+export function getNextMonthDueDate(dueDate: string): string {
+  const parts = dueDate.trim().split('/');
+  if (parts.length !== 3) return dueDate;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  let year = parseInt(parts[2], 10);
+  const isTwoDigitYear = parts[2].length === 2;
+
+  if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year)) {
+    return dueDate;
+  }
+
+  if (isTwoDigitYear) {
+    year += 2000;
+  }
+
+  let nextMonth = month + 1;
+  let nextYear = year;
+  if (nextMonth > 12) {
+    nextMonth = 1;
+    nextYear += 1;
+  }
+
+  const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+  const clampedDay = Math.min(day, lastDayOfNextMonth);
+
+  const dd = String(clampedDay).padStart(2, '0');
+  const mm = String(nextMonth).padStart(2, '0');
+  const yy = isTwoDigitYear ? String(nextYear).slice(-2) : String(nextYear);
+
+  return `${dd}/${mm}/${yy}`;
+}

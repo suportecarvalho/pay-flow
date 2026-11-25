@@ -7,8 +7,12 @@ create table if not exists public.boletos (
   value numeric(12, 2) not null,
   barcode text,
   paid boolean not null default false,
+  recurring boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table public.boletos
+  add column if not exists recurring boolean not null default false;
 
 create index if not exists idx_boletos_user_id on public.boletos (user_id);
 

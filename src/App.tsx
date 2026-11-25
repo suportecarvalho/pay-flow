@@ -17,6 +17,7 @@ import {
 } from './services/boletosService';
 import type { Boleto } from './types/boleto';
 import type { AuthUser } from './types/user';
+import { getNextMonthDueDate } from './utils/boletoParser';
 
 type Screen = 'splash' | 'login' | 'app' | 'scanner' | 'insert_boleto';
 
@@ -85,13 +86,30 @@ export function App() {
     }
   }, [screen, user]);
 
-  const handleMarkPaid = (id: string) => {
+  const handleMarkPaid = async (id: string) => {
+    const target = boletos.find((b) => b.id === id);
     setBoletos((prev) =>
       prev.map((b) => (b.id === id ? { ...b, paid: true } : b))
     );
     setSelectedBoleto(null);
+
     if (user) {
       void setBoletoPaidStatus(user.id, id, true);
+
+      if (target?.recurring) {
+        try {
+          const nextBoleto = await createUserBoleto(user.id, {
+            name: target.name,
+            dueDate: getNextMonthDueDate(target.dueDate),
+            value: target.value,
+            barcode: target.barcode,
+            recurring: true,
+          });
+          setBoletos((prev) => [nextBoleto, ...prev]);
+        } catch (err) {
+          console.error('Erro ao gerar próximo boleto recorrente:', err);
+        }
+      }
     }
   };
 
@@ -132,6 +150,7 @@ export function App() {
     dueDate: string;
     value: number;
     barcode?: string;
+    recurring: boolean;
   }) => {
     if (!user) return;
     const created = await createUserBoleto(user.id, data);
@@ -185,7 +204,9 @@ export function App() {
             <BoletoModal
               boleto={selectedBoleto}
               onClose={() => setSelectedBoleto(null)}
-              onMarkPaid={handleMarkPaid}
+              onMarkPaid={(id) => {
+                void handleMarkPaid(id);
+              }}
               onMarkUnpaid={handleMarkUnpaid}
               onDelete={handleDeleteBoleto}
             />

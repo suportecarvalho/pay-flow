@@ -1,3 +1,4 @@
+import { Repeat } from 'lucide-react';
 import { formatCurrencyBRL } from '../data/initialBoletos';
 import type { Boleto } from '../types/boleto';
 import { isBoletoOverdue } from '../utils/boletoParser';
@@ -24,6 +25,15 @@ export function BoletoListItem({ boleto, onSelect }: BoletoListItemProps) {
           {overdue && (
             <span className="shrink-0 rounded-[4px] bg-[#E83F5B]/10 px-1.5 py-0.5 font-inter text-[11px] font-semibold text-[#E83F5B]">
               Atrasado
+            </span>
+          )}
+          {boleto.recurring && (
+            <span
+              title="Conta recorrente mensal"
+              className="shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#FF941A]/10 px-1.5 py-0.5 font-inter text-[11px] font-medium text-[#FF941A]"
+            >
+              <Repeat size={11} strokeWidth={2} />
+              Mensal
             </span>
           )}
         </div>

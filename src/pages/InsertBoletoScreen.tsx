@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Wallet, XCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Repeat, Wallet, XCircle } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { parseBoletoBarcode } from '../utils/boletoParser';
 
@@ -10,6 +10,7 @@ interface InsertBoletoScreenProps {
     dueDate: string;
     value: number;
     barcode?: string;
+    recurring: boolean;
   }) => Promise<void> | void;
 }
 
@@ -56,6 +57,7 @@ export function InsertBoletoScreen({
       : ''
   );
   const [barcode, setBarcode] = useState(initialBarcode);
+  const [recurring, setRecurring] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -87,6 +89,7 @@ export function InsertBoletoScreen({
         dueDate: dueDate.trim(),
         value: numericValue,
         barcode: barcode.trim() || undefined,
+        recurring,
       });
     } catch (err) {
       setError(
@@ -197,6 +200,36 @@ export function InsertBoletoScreen({
             className="flex-1 font-inter text-[15px] text-[#585666] placeholder:text-[#B1B0B8] bg-transparent outline-none"
           />
         </div>
+
+        {/* Conta recorrente */}
+        <button
+          type="button"
+          onClick={() => setRecurring((prev) => !prev)}
+          role="switch"
+          aria-checked={recurring}
+          className="w-full flex items-center justify-between border-b border-[#E3E3E6] pb-3 cursor-pointer"
+        >
+          <div className="flex items-center">
+            <div className="w-11 flex items-center justify-center border-r border-[#E3E3E6] pr-3 mr-4 shrink-0">
+              <Repeat size={20} strokeWidth={1.8} className="text-[#FF941A]" />
+            </div>
+            <span className="font-inter text-[15px] text-[#585666]">
+              Conta recorrente (mensal)
+            </span>
+          </div>
+
+          <span
+            className={`w-10 h-6 rounded-full p-0.5 transition-colors flex items-center shrink-0 ${
+              recurring ? 'bg-[#FF941A]' : 'bg-[#E3E3E6]'
+            }`}
+          >
+            <span
+              className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                recurring ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </span>
+        </button>
 
         {error && (
           <p className="text-center font-inter text-[13px] text-[#E83F5B] pt-1">

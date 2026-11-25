@@ -9,6 +9,7 @@ interface BoletoRow {
   value: number | string;
   barcode: string | null;
   paid: boolean;
+  recurring?: boolean;
 }
 
 function getLocalKey(userId: string): string {
@@ -41,6 +42,7 @@ function mapRowToBoleto(row: BoletoRow): Boleto {
     value: Number(row.value),
     barcode: row.barcode ?? undefined,
     paid: row.paid,
+    recurring: Boolean(row.recurring),
   };
 }
 
@@ -51,7 +53,7 @@ export async function fetchUserBoletos(userId: string): Promise<Boleto[]> {
 
   const { data, error } = await supabase
     .from('boletos')
-    .select('id, user_id, name, due_date, value, barcode, paid')
+    .select('id, user_id, name, due_date, value, barcode, paid, recurring')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -71,6 +73,7 @@ export async function createUserBoleto(
     dueDate: string;
     value: number;
     barcode?: string;
+    recurring?: boolean;
   }
 ): Promise<Boleto> {
   if (!supabase) {
@@ -81,6 +84,7 @@ export async function createUserBoleto(
       value: input.value,
       barcode: input.barcode,
       paid: false,
+      recurring: Boolean(input.recurring),
     };
   }
 
@@ -93,8 +97,9 @@ export async function createUserBoleto(
       value: input.value,
       barcode: input.barcode ?? null,
       paid: false,
+      recurring: Boolean(input.recurring),
     })
-    .select('id, user_id, name, due_date, value, barcode, paid')
+    .select('id, user_id, name, due_date, value, barcode, paid, recurring')
     .single();
 
   if (error || !data) {

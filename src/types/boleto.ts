@@ -5,4 +5,5 @@ export interface Boleto {
   value: number;
   barcode?: string;
   paid: boolean;
+  recurring?: boolean;
 }
