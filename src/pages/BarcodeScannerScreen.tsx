@@ -455,12 +455,12 @@ export function BarcodeScannerScreen({
                 ? 'h-12 w-full'
                 : 'h-14 w-full'
           }`}
-          aria-label="Inserir código do boleto"
+          aria-label="Cadastrar manualmente"
         >
           <span
             className={`whitespace-nowrap font-inter text-[14px] text-[#585666] tracking-tight ${textRotationClass}`}
           >
-            Inserir código do boleto
+            Cadastrar manualmente
           </span>
         </button>
 
