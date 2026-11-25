@@ -1,8 +1,8 @@
-import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BoletoListItem } from '../components/BoletoListItem';
 import { BoletoTotalBar } from '../components/BoletoTotalBar';
+import { SearchBar } from '../components/SearchBar';
 import type { Boleto } from '../types/boleto';
 import { parseDueDateTimestamp } from '../utils/boletoParser';
 
@@ -88,23 +88,17 @@ export function HomeScreen({
 
       {/* Meus boletos list */}
       <main className="relative flex-1 min-h-0 flex flex-col pt-14 px-6 overflow-hidden">
-        <div className="pb-3 border-b border-[#E3E3E6] shrink-0 flex items-center justify-between gap-3">
-          <h2 className="font-lexend font-semibold text-[20px] text-[#585666] shrink-0">
+        <div className="pb-3 border-b border-[#E3E3E6] shrink-0">
+          <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
             Meus boletos
           </h2>
 
           {unpaidBoletos.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-[#FAFAFC] border border-[#E3E3E6] rounded-[5px] px-2.5 py-1 max-w-[155px]">
-              <Search size={13} className="text-[#B1B0B8] shrink-0" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar..."
-                aria-label="Buscar boleto"
-                className="w-full font-inter text-[12px] text-[#585666] placeholder:text-[#B1B0B8] bg-transparent outline-none"
-              />
-            </div>
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar boleto..."
+            />
           )}
         </div>
 

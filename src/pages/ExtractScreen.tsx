@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BoletoListItem } from '../components/BoletoListItem';
 import { BoletoTotalBar } from '../components/BoletoTotalBar';
+import { SearchBar } from '../components/SearchBar';
 import { formatCurrencyBRL } from '../data/initialBoletos';
 import type { Boleto } from '../types/boleto';
 import {
@@ -168,68 +169,60 @@ export function ExtractScreen({
             </div>
           </div>
 
-          {/* Month Filter & Search Bar */}
+          {/* Month Filter Bar */}
           <div className="mt-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setFilterMode('all')}
+              className={`px-3 py-1 rounded-[5px] font-inter text-[12px] font-medium transition-colors cursor-pointer ${
+                filterMode === 'all'
+                  ? 'bg-[#FF941A] text-white'
+                  : 'bg-[#FAFAFC] text-[#706E7A] border border-[#E3E3E6] hover:bg-[#F2F2F7]'
+              }`}
+            >
+              Todos
+            </button>
+
+            <div
+              className={`flex items-center rounded-[5px] border transition-colors ${
+                filterMode === 'month'
+                  ? 'border-[#FF941A] bg-[#FF941A]/10 text-[#FF941A]'
+                  : 'border-[#E3E3E6] bg-[#FAFAFC] text-[#585666]'
+              }`}
+            >
               <button
                 type="button"
-                onClick={() => setFilterMode('all')}
-                className={`px-2.5 py-1 rounded-[5px] font-inter text-[12px] font-medium transition-colors cursor-pointer ${
-                  filterMode === 'all'
-                    ? 'bg-[#FF941A] text-white'
-                    : 'bg-[#FAFAFC] text-[#706E7A] border border-[#E3E3E6] hover:bg-[#F2F2F7]'
-                }`}
+                onClick={() => stepMonth(-1)}
+                aria-label="Mês anterior"
+                className="px-2 py-1 hover:opacity-75 transition-opacity cursor-pointer"
               >
-                Todos
+                <ChevronLeft size={15} strokeWidth={2} />
               </button>
 
-              <div
-                className={`flex items-center rounded-[5px] border transition-colors ${
-                  filterMode === 'month'
-                    ? 'border-[#FF941A] bg-[#FF941A]/10 text-[#FF941A]'
-                    : 'border-[#E3E3E6] bg-[#FAFAFC] text-[#585666]'
-                }`}
+              <button
+                type="button"
+                onClick={() => setFilterMode('month')}
+                className="px-2 py-1 font-inter text-[12px] font-semibold cursor-pointer"
               >
-                <button
-                  type="button"
-                  onClick={() => stepMonth(-1)}
-                  aria-label="Mês anterior"
-                  className="px-1.5 py-1 hover:opacity-75 transition-opacity cursor-pointer"
-                >
-                  <ChevronLeft size={14} strokeWidth={2} />
-                </button>
+                {monthLabel}
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => setFilterMode('month')}
-                  className="px-1.5 py-1 font-inter text-[12px] font-semibold cursor-pointer"
-                >
-                  {monthLabel}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => stepMonth(1)}
-                  aria-label="Próximo mês"
-                  className="px-1.5 py-1 hover:opacity-75 transition-opacity cursor-pointer"
-                >
-                  <ChevronRight size={14} strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 bg-[#FAFAFC] border border-[#E3E3E6] rounded-[5px] px-2 py-1 min-w-0 flex-1 max-w-[130px]">
-              <Search size={13} className="text-[#B1B0B8] shrink-0" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar..."
-                aria-label="Buscar no extrato"
-                className="w-full font-inter text-[12px] text-[#585666] placeholder:text-[#B1B0B8] bg-transparent outline-none"
-              />
+              <button
+                type="button"
+                onClick={() => stepMonth(1)}
+                aria-label="Próximo mês"
+                className="px-2 py-1 hover:opacity-75 transition-opacity cursor-pointer"
+              >
+                <ChevronRight size={15} strokeWidth={2} />
+              </button>
             </div>
           </div>
+
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar no extrato..."
+          />
         </div>
 
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
