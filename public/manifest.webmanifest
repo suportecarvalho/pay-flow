@@ -4,7 +4,7 @@
   "description": "Organize seus boletos em um só lugar.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#FFFFFF",
   "theme_color": "#FF941A",
   "lang": "pt-BR",

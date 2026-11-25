@@ -24,7 +24,8 @@ interface NativeBarcodeDetectorConstructor {
 
 function getIsLandscape(): boolean {
   if (typeof window === 'undefined') return false;
-  return window.matchMedia('(orientation: landscape)').matches;
+  if (window.matchMedia('(orientation: landscape)').matches) return true;
+  return window.innerWidth > window.innerHeight;
 }
 
 async function decodeCanvasWithEngines(
@@ -77,16 +78,20 @@ export function BarcodeScannerScreen({
   useEffect(() => {
     const mediaQuery = window.matchMedia('(orientation: landscape)');
     const handleOrientation = () => {
-      setIsLandscape(mediaQuery.matches);
+      setIsLandscape(getIsLandscape());
     };
 
     handleOrientation();
     mediaQuery.addEventListener('change', handleOrientation);
     window.addEventListener('resize', handleOrientation);
+    window.addEventListener('orientationchange', handleOrientation);
+    screen.orientation?.addEventListener?.('change', handleOrientation);
 
     return () => {
       mediaQuery.removeEventListener('change', handleOrientation);
       window.removeEventListener('resize', handleOrientation);
+      window.removeEventListener('orientationchange', handleOrientation);
+      screen.orientation?.removeEventListener?.('change', handleOrientation);
     };
   }, []);
 
