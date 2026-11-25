@@ -10,7 +10,7 @@ export function BottomNav({ activeTab, onChangeTab, onAddBoleto }: BottomNavProp
   return (
     <nav
       aria-label="Navegação principal"
-      className="relative z-30 h-[84px] bg-white flex items-center justify-around px-8 shrink-0"
+      className="relative z-30 h-[72px] bg-white flex items-center justify-around px-8 shrink-0"
     >
       {/* Home Tab */}
       <button

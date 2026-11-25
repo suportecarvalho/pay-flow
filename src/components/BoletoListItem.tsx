@@ -15,7 +15,7 @@ export function BoletoListItem({ boleto, onSelect }: BoletoListItemProps) {
     <button
       type="button"
       onClick={() => onSelect(boleto)}
-      className="w-full py-3.5 flex items-center justify-between text-left hover:bg-[#FAFAFC] active:bg-[#F3F3F7] rounded-[5px] px-1 -mx-1 transition-colors cursor-pointer"
+      className="w-full py-2.5 flex items-center justify-between text-left hover:bg-[#FAFAFC] active:bg-[#F3F3F7] rounded-[5px] px-1 -mx-1 transition-colors cursor-pointer"
     >
       <div className="min-w-0 pr-3">
         <div className="flex items-center gap-2">

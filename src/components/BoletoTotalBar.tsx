@@ -10,7 +10,7 @@ export function BoletoTotalBar({ label, boletos }: BoletoTotalBarProps) {
   const total = boletos.reduce((sum, boleto) => sum + boleto.value, 0);
 
   return (
-    <div className="shrink-0 border-t border-[#E3E3E6] py-3.5 bg-white flex items-center justify-between">
+    <div className="shrink-0 border-t border-[#E3E3E6] py-3 bg-white flex items-center justify-between">
       <span className="font-lexend font-semibold text-[16px] text-[#585666]">
         {label}
       </span>

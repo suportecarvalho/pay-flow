@@ -89,8 +89,8 @@ export function HomeScreen({
       </AppHeader>
 
       {/* Meus boletos list */}
-      <main className="relative flex-1 min-h-0 flex flex-col pt-16 px-6 overflow-hidden">
-        <div className="pb-4 border-b border-[#E3E3E6] shrink-0">
+      <main className="relative flex-1 min-h-0 flex flex-col pt-14 px-6 overflow-hidden">
+        <div className="pb-3 border-b border-[#E3E3E6] shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
               Meus boletos
@@ -122,8 +122,10 @@ export function HomeScreen({
         {/* Soft bottom fade above total bar */}
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
           <div
-            className={`min-h-0 max-h-[312px] no-scrollbar pt-2 pb-6 space-y-1 ${
-              canScroll ? 'flex-1 overflow-y-auto' : 'overflow-hidden'
+            className={`min-h-0 no-scrollbar pt-1 space-y-0.5 ${
+              canScroll
+                ? 'flex-1 overflow-y-auto pb-8'
+                : 'overflow-hidden pb-2'
             }`}
           >
             {visibleBoletos.length === 0 ? (
