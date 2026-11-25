@@ -6,4 +6,6 @@ export interface Boleto {
   barcode?: string;
   paid: boolean;
   recurring?: boolean;
+  sharedWith?: string;
+  ownerEmail?: string;
 }

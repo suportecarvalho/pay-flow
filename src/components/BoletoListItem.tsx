@@ -1,4 +1,4 @@
-import { Repeat } from 'lucide-react';
+import { Repeat, Users } from 'lucide-react';
 import { formatCurrencyBRL } from '../data/initialBoletos';
 import type { Boleto } from '../types/boleto';
 import { isBoletoOverdue } from '../utils/boletoParser';
@@ -34,6 +34,14 @@ export function BoletoListItem({ boleto, onSelect }: BoletoListItemProps) {
             >
               <Repeat size={11} strokeWidth={2} />
               Mensal
+            </span>
+          )}
+          {boleto.sharedWith && (
+            <span
+              title={`Compartilhado com ${boleto.sharedWith}`}
+              className="shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#585666]/10 px-1.5 py-0.5 font-inter text-[11px] font-medium text-[#585666]"
+            >
+              <Users size={11} strokeWidth={2} />
             </span>
           )}
         </div>

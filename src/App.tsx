@@ -14,6 +14,7 @@ import {
   loadLocalBoletos,
   saveLocalBoletos,
   setBoletoPaidStatus,
+  updateUserBoleto,
 } from './services/boletosService';
 import type { Boleto } from './types/boleto';
 import type { AuthUser } from './types/user';
@@ -39,6 +40,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>('splash');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [selectedBoleto, setSelectedBoleto] = useState<Boleto | null>(null);
+  const [editingBoleto, setEditingBoleto] = useState<Boleto | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState('');
 
   const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage);
@@ -50,7 +52,7 @@ export function App() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    fetchUserBoletos(user.id).then((remoteBoletos) => {
+    fetchUserBoletos(user.id, user.email).then((remoteBoletos) => {
       if (active) {
         setBoletos(remoteBoletos);
       }
@@ -94,7 +96,7 @@ export function App() {
     setSelectedBoleto(null);
 
     if (user) {
-      void setBoletoPaidStatus(user.id, id, true);
+      void setBoletoPaidStatus(id, true);
 
       if (target?.recurring) {
         try {
@@ -104,6 +106,8 @@ export function App() {
             value: target.value,
             barcode: target.barcode,
             recurring: true,
+            sharedWith: target.sharedWith,
+            ownerEmail: target.ownerEmail ?? user.email,
           });
           setBoletos((prev) => [nextBoleto, ...prev]);
         } catch (err) {
@@ -119,7 +123,7 @@ export function App() {
     );
     setSelectedBoleto(null);
     if (user) {
-      void setBoletoPaidStatus(user.id, id, false);
+      void setBoletoPaidStatus(id, false);
     }
   };
 
@@ -127,7 +131,7 @@ export function App() {
     setBoletos((prev) => prev.filter((b) => b.id !== id));
     setSelectedBoleto(null);
     if (user) {
-      void deleteUserBoleto(user.id, id);
+      void deleteUserBoleto(id);
     }
   };
 
@@ -142,18 +146,46 @@ export function App() {
     setUser(null);
     setBoletos([]);
     setSelectedBoleto(null);
+    setEditingBoleto(null);
     setScreen('login');
   };
 
-  const handleCreateBoleto = async (data: {
+  const handleSaveBoleto = async (data: {
     name: string;
     dueDate: string;
     value: number;
     barcode?: string;
     recurring: boolean;
+    sharedWith?: string;
   }) => {
     if (!user) return;
-    const created = await createUserBoleto(user.id, data);
+
+    if (editingBoleto) {
+      await updateUserBoleto(editingBoleto.id, data);
+      setBoletos((prev) =>
+        prev.map((b) =>
+          b.id === editingBoleto.id
+            ? {
+                ...b,
+                name: data.name,
+                dueDate: data.dueDate,
+                value: data.value,
+                barcode: data.barcode,
+                recurring: data.recurring,
+                sharedWith: data.sharedWith?.trim().toLowerCase() || undefined,
+              }
+            : b
+        )
+      );
+      setEditingBoleto(null);
+      setScreen('app');
+      return;
+    }
+
+    const created = await createUserBoleto(user.id, {
+      ...data,
+      ownerEmail: user.email,
+    });
     setBoletos((prev) => [created, ...prev]);
     setScannedBarcode('');
     setActiveTab('home');
@@ -196,6 +228,7 @@ export function App() {
               if (typeof devOrient?.requestPermission === 'function') {
                 void devOrient.requestPermission().catch(() => {});
               }
+              setEditingBoleto(null);
               setScreen('scanner');
             }}
           />
@@ -208,6 +241,11 @@ export function App() {
                 void handleMarkPaid(id);
               }}
               onMarkUnpaid={handleMarkUnpaid}
+              onEdit={(boleto) => {
+                setSelectedBoleto(null);
+                setEditingBoleto(boleto);
+                setScreen('insert_boleto');
+              }}
               onDelete={handleDeleteBoleto}
             />
           )}
@@ -219,10 +257,12 @@ export function App() {
           onBack={() => setScreen('app')}
           onManualInsert={() => {
             setScannedBarcode('');
+            setEditingBoleto(null);
             setScreen('insert_boleto');
           }}
           onScanSuccess={(code) => {
             setScannedBarcode(code);
+            setEditingBoleto(null);
             setScreen('insert_boleto');
           }}
         />
@@ -231,11 +271,13 @@ export function App() {
       {screen === 'insert_boleto' && (
         <InsertBoletoScreen
           initialBarcode={scannedBarcode}
+          editingBoleto={editingBoleto}
           onCancel={() => {
             setScannedBarcode('');
+            setEditingBoleto(null);
             setScreen('app');
           }}
-          onSubmit={handleCreateBoleto}
+          onSubmit={handleSaveBoleto}
         />
       )}
     </div>

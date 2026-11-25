@@ -10,6 +10,8 @@ interface BoletoRow {
   barcode: string | null;
   paid: boolean;
   recurring?: boolean;
+  shared_with?: string | null;
+  owner_email?: string | null;
 }
 
 function getLocalKey(userId: string): string {
@@ -43,19 +45,36 @@ function mapRowToBoleto(row: BoletoRow): Boleto {
     barcode: row.barcode ?? undefined,
     paid: row.paid,
     recurring: Boolean(row.recurring),
+    sharedWith: row.shared_with ?? undefined,
+    ownerEmail: row.owner_email ?? undefined,
   };
 }
 
-export async function fetchUserBoletos(userId: string): Promise<Boleto[]> {
+export async function fetchUserBoletos(
+  userId: string,
+  userEmail?: string
+): Promise<Boleto[]> {
   if (!supabase) {
     return loadLocalBoletos(userId);
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('boletos')
-    .select('id, user_id, name, due_date, value, barcode, paid, recurring')
-    .eq('user_id', userId)
+    .select(
+      'id, user_id, name, due_date, value, barcode, paid, recurring, shared_with, owner_email'
+    )
     .order('created_at', { ascending: false });
+
+  const normalizedEmail = userEmail?.trim().toLowerCase();
+  if (normalizedEmail) {
+    query = query.or(
+      `user_id.eq.${userId},shared_with.eq.${normalizedEmail}`
+    );
+  } else {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     return loadLocalBoletos(userId);
@@ -74,8 +93,12 @@ export async function createUserBoleto(
     value: number;
     barcode?: string;
     recurring?: boolean;
+    sharedWith?: string;
+    ownerEmail?: string;
   }
 ): Promise<Boleto> {
+  const normalizedShared = input.sharedWith?.trim().toLowerCase() || null;
+
   if (!supabase) {
     return {
       id: String(Date.now()),
@@ -85,6 +108,8 @@ export async function createUserBoleto(
       barcode: input.barcode,
       paid: false,
       recurring: Boolean(input.recurring),
+      sharedWith: normalizedShared ?? undefined,
+      ownerEmail: input.ownerEmail,
     };
   }
 
@@ -98,8 +123,12 @@ export async function createUserBoleto(
       barcode: input.barcode ?? null,
       paid: false,
       recurring: Boolean(input.recurring),
+      shared_with: normalizedShared,
+      owner_email: input.ownerEmail?.trim().toLowerCase() ?? null,
     })
-    .select('id, user_id, name, due_date, value, barcode, paid, recurring')
+    .select(
+      'id, user_id, name, due_date, value, barcode, paid, recurring, shared_with, owner_email'
+    )
     .single();
 
   if (error || !data) {
@@ -112,29 +141,47 @@ export async function createUserBoleto(
   return mapRowToBoleto(data as BoletoRow);
 }
 
+export async function updateUserBoleto(
+  boletoId: string,
+  input: {
+    name: string;
+    dueDate: string;
+    value: number;
+    barcode?: string;
+    recurring: boolean;
+    sharedWith?: string;
+  }
+): Promise<void> {
+  if (!supabase) return;
+
+  const { error } = await supabase
+    .from('boletos')
+    .update({
+      name: input.name,
+      due_date: input.dueDate,
+      value: input.value,
+      barcode: input.barcode ?? null,
+      recurring: input.recurring,
+      shared_with: input.sharedWith?.trim().toLowerCase() || null,
+    })
+    .eq('id', boletoId);
+
+  if (error) {
+    throw new Error(error.message || 'Erro ao atualizar boleto.');
+  }
+}
+
 export async function setBoletoPaidStatus(
-  userId: string,
   boletoId: string,
   paid: boolean
 ): Promise<void> {
   if (!supabase) return;
 
-  await supabase
-    .from('boletos')
-    .update({ paid })
-    .eq('id', boletoId)
-    .eq('user_id', userId);
+  await supabase.from('boletos').update({ paid }).eq('id', boletoId);
 }
 
-export async function deleteUserBoleto(
-  userId: string,
-  boletoId: string
-): Promise<void> {
+export async function deleteUserBoleto(boletoId: string): Promise<void> {
   if (!supabase) return;
 
-  await supabase
-    .from('boletos')
-    .delete()
-    .eq('id', boletoId)
-    .eq('user_id', userId);
+  await supabase.from('boletos').delete().eq('id', boletoId);
 }

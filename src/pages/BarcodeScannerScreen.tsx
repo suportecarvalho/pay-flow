@@ -10,6 +10,7 @@ import {
   isValidBoletoLength,
   isValidFebrabanBarcode,
 } from '../utils/boletoParser';
+import { extractBarcodeFromPdf } from '../utils/pdfBoletoReader';
 
 interface BarcodeScannerScreenProps {
   onBack: () => void;
@@ -497,8 +498,27 @@ export function BarcodeScannerScreen({
     e.target.value = '';
     if (!file) return;
 
-    setPhotoStatus('Lendo imagem...');
+    const isPdf =
+      file.type === 'application/pdf' ||
+      file.name.toLowerCase().endsWith('.pdf');
+
+    setPhotoStatus(isPdf ? 'Lendo PDF...' : 'Lendo imagem...');
     try {
+      if (isPdf) {
+        const pdfCode = await extractBarcodeFromPdf(file);
+        if (pdfCode) {
+          setPhotoStatus('');
+          if (typeof navigator.vibrate === 'function') {
+            navigator.vibrate(80);
+          }
+          onScanSuccessRef.current(pdfCode);
+          return;
+        }
+        setPhotoStatus('Nenhum código encontrado no PDF.');
+        setTimeout(() => setPhotoStatus(''), 3000);
+        return;
+      }
+
       const bitmap = await createImageBitmap(file);
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -572,11 +592,11 @@ export function BarcodeScannerScreen({
         }`}
       />
 
-      {/* Hidden Photo Input */}
+      {/* Hidden Photo/PDF Input */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf,.pdf"
         onChange={(e) => void handlePhotoSelected(e)}
         className="hidden"
       />
@@ -685,8 +705,8 @@ export function BarcodeScannerScreen({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="Ler de foto ou print"
-              aria-label="Ler código de barras de foto"
+              title="Importar PDF, foto ou print"
+              aria-label="Importar boleto por PDF ou foto"
               className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <ImagePlus size={18} strokeWidth={1.8} />

@@ -1,9 +1,18 @@
-import { ArrowLeft, FileText, Repeat, Wallet, XCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  FileText,
+  Repeat,
+  Users,
+  Wallet,
+  XCircle,
+} from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import type { Boleto } from '../types/boleto';
 import { parseBoletoBarcode } from '../utils/boletoParser';
 
 interface InsertBoletoScreenProps {
   initialBarcode?: string;
+  editingBoleto?: Boleto | null;
   onCancel: () => void;
   onSubmit: (data: {
     name: string;
@@ -11,6 +20,7 @@ interface InsertBoletoScreenProps {
     value: number;
     barcode?: string;
     recurring: boolean;
+    sharedWith?: string;
   }) => Promise<void> | void;
 }
 
@@ -39,6 +49,7 @@ function parseCurrencyInput(formatted: string): number {
 
 export function InsertBoletoScreen({
   initialBarcode = '',
+  editingBoleto = null,
   onCancel,
   onSubmit,
 }: InsertBoletoScreenProps) {
@@ -46,18 +57,30 @@ export function InsertBoletoScreen({
     ? parseBoletoBarcode(initialBarcode)
     : null;
 
-  const [name, setName] = useState('');
-  const [dueDate, setDueDate] = useState(() => parsedInitial?.dueDate ?? '');
-  const [valueText, setValueText] = useState(() =>
-    parsedInitial?.value
+  const initialValueFormatted = editingBoleto
+    ? `R$ ${editingBoleto.value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
+    : parsedInitial?.value
       ? `R$ ${parsedInitial.value.toLocaleString('pt-BR', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}`
-      : ''
+      : '';
+
+  const [name, setName] = useState(editingBoleto?.name ?? '');
+  const [dueDate, setDueDate] = useState(
+    editingBoleto?.dueDate ?? parsedInitial?.dueDate ?? ''
   );
-  const [barcode, setBarcode] = useState(initialBarcode);
-  const [recurring, setRecurring] = useState(false);
+  const [valueText, setValueText] = useState(initialValueFormatted);
+  const [barcode, setBarcode] = useState(
+    editingBoleto?.barcode ?? initialBarcode
+  );
+  const [recurring, setRecurring] = useState(
+    Boolean(editingBoleto?.recurring)
+  );
+  const [sharedWith, setSharedWith] = useState(editingBoleto?.sharedWith ?? '');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -90,15 +113,18 @@ export function InsertBoletoScreen({
         value: numericValue,
         barcode: barcode.trim() || undefined,
         recurring,
+        sharedWith: sharedWith.trim() || undefined,
       });
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erro ao cadastrar o boleto.'
+        err instanceof Error ? err.message : 'Erro ao salvar o boleto.'
       );
     } finally {
       setSubmitting(false);
     }
   };
+
+  const isEditing = Boolean(editingBoleto);
 
   return (
     <form
@@ -119,13 +145,13 @@ export function InsertBoletoScreen({
 
       {/* Title */}
       <h1 className="mt-5 font-lexend font-semibold text-[20px] leading-[26px] text-[#585666] text-center">
-        Preencha os dados
+        {isEditing ? 'Editar dados' : 'Preencha os dados'}
         <br />
         do boleto
       </h1>
 
       {/* Form Fields */}
-      <div className="flex-1 px-6 pt-9 space-y-5 overflow-y-auto no-scrollbar">
+      <div className="flex-1 px-6 pt-8 space-y-5 overflow-y-auto no-scrollbar pb-6">
         {/* Nome do boleto */}
         <div className="flex items-center border-b border-[#E3E3E6] pb-3">
           <div className="w-11 flex items-center justify-center border-r border-[#E3E3E6] pr-3 mr-4 shrink-0">
@@ -231,6 +257,20 @@ export function InsertBoletoScreen({
           </span>
         </button>
 
+        {/* Compartilhar com familiar (e-mail Google) */}
+        <div className="flex items-center border-b border-[#E3E3E6] pb-3">
+          <div className="w-11 flex items-center justify-center border-r border-[#E3E3E6] pr-3 mr-4 shrink-0">
+            <Users size={20} strokeWidth={1.8} className="text-[#FF941A]" />
+          </div>
+          <input
+            type="email"
+            value={sharedWith}
+            onChange={(e) => setSharedWith(e.target.value)}
+            placeholder="Compartilhar (e-mail Google)"
+            className="flex-1 font-inter text-[15px] text-[#585666] placeholder:text-[#B1B0B8] bg-transparent outline-none"
+          />
+        </div>
+
         {error && (
           <p className="text-center font-inter text-[13px] text-[#E83F5B] pt-1">
             {error}
@@ -253,7 +293,7 @@ export function InsertBoletoScreen({
           disabled={submitting}
           className="flex items-center justify-center font-inter text-[15px] font-medium text-[#FF941A] hover:bg-[#FAFAFC] active:bg-[#FFF5E8] disabled:opacity-50 transition-colors cursor-pointer"
         >
-          {submitting ? 'Cadastrando...' : 'Cadastrar'}
+          {submitting ? 'Salvando...' : isEditing ? 'Salvar' : 'Cadastrar'}
         </button>
       </div>
     </form>

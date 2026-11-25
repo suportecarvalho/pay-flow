@@ -8,13 +8,22 @@ create table if not exists public.boletos (
   barcode text,
   paid boolean not null default false,
   recurring boolean not null default false,
+  shared_with text,
+  owner_email text,
   created_at timestamptz not null default now()
 );
 
 alter table public.boletos
   add column if not exists recurring boolean not null default false;
 
+alter table public.boletos
+  add column if not exists shared_with text;
+
+alter table public.boletos
+  add column if not exists owner_email text;
+
 create index if not exists idx_boletos_user_id on public.boletos (user_id);
+create index if not exists idx_boletos_shared_with on public.boletos (shared_with);
 
 -- Para uso inicial com Google Identity Services no frontend (chave anon):
 grant usage on schema public to anon, authenticated;
