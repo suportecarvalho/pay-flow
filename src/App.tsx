@@ -171,6 +171,12 @@ export function App() {
             activeTab={activeTab}
             onChangeTab={setActiveTab}
             onAddBoleto={() => {
+              const devOrient = window.DeviceOrientationEvent as unknown as {
+                requestPermission?: () => Promise<string>;
+              };
+              if (typeof devOrient?.requestPermission === 'function') {
+                void devOrient.requestPermission().catch(() => {});
+              }
               setScreen('scanner');
             }}
           />

@@ -80,13 +80,42 @@ export function BarcodeScannerScreen({
   const [scanFailed, setScanFailed] = useState(false);
   const [photoStatus, setPhotoStatus] = useState('');
   const [isLandscape, setIsLandscape] = useState(getIsLandscape);
+  const [tiltSide, setTiltSide] = useState<'none' | 'left' | 'right'>('none');
   const onScanSuccessRef = useRef(onScanSuccess);
   onScanSuccessRef.current = onScanSuccess;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(orientation: landscape)');
     const handleOrientation = () => {
-      setIsLandscape(getIsLandscape());
+      const landscape = getIsLandscape();
+      setIsLandscape(landscape);
+      if (landscape) {
+        setTiltSide('none');
+      }
+    };
+
+    const handleDeviceOrientation = (event: DeviceOrientationEvent) => {
+      if (getIsLandscape()) {
+        setTiltSide('none');
+        return;
+      }
+      const gamma = event.gamma ?? 0;
+      const beta = event.beta ?? 0;
+
+      if (Math.abs(beta) < 55) {
+        if (gamma < -48) {
+          setTiltSide('left');
+          return;
+        }
+        if (gamma > 48) {
+          setTiltSide('right');
+          return;
+        }
+      }
+
+      if (Math.abs(gamma) < 28) {
+        setTiltSide('none');
+      }
     };
 
     handleOrientation();
@@ -94,12 +123,14 @@ export function BarcodeScannerScreen({
     window.addEventListener('resize', handleOrientation);
     window.addEventListener('orientationchange', handleOrientation);
     screen.orientation?.addEventListener?.('change', handleOrientation);
+    window.addEventListener('deviceorientation', handleDeviceOrientation);
 
     return () => {
       mediaQuery.removeEventListener('change', handleOrientation);
       window.removeEventListener('resize', handleOrientation);
       window.removeEventListener('orientationchange', handleOrientation);
       screen.orientation?.removeEventListener?.('change', handleOrientation);
+      window.removeEventListener('deviceorientation', handleDeviceOrientation);
     };
   }, []);
 
@@ -366,6 +397,14 @@ export function BarcodeScannerScreen({
     }
   };
 
+  const isSideways = !isLandscape && tiltSide !== 'none';
+  const textRotationClass =
+    tiltSide === 'left'
+      ? 'rotate-90'
+      : tiltSide === 'right'
+        ? '-rotate-90'
+        : '';
+
   return (
     <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden relative">
       {/* Top Orange Strip */}
@@ -384,8 +423,16 @@ export function BarcodeScannerScreen({
         className="hidden"
       />
 
-      {/* Main Scanner Layout (adapts cleanly to portrait & landscape) */}
-      <div className="flex-1 flex flex-col-reverse relative overflow-hidden">
+      {/* Main Scanner Layout (adapts cleanly to portrait, landscape & physical tilt) */}
+      <div
+        className={`flex-1 flex relative overflow-hidden ${
+          isSideways
+            ? tiltSide === 'right'
+              ? 'flex-row-reverse'
+              : 'flex-row'
+            : 'flex-col-reverse'
+        }`}
+      >
         {/* Live Camera Video Background */}
         <video
           ref={videoRef}
@@ -397,23 +444,35 @@ export function BarcodeScannerScreen({
           }`}
         />
 
-        {/* Bottom White Action Bar */}
+        {/* White Action Bar */}
         <button
           type="button"
           onClick={onManualInsert}
-          className={`relative z-10 w-full bg-white hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors flex items-center justify-center shrink-0 cursor-pointer ${
-            isLandscape ? 'h-12' : 'h-14'
+          className={`relative z-10 bg-white hover:bg-[#FAFAFC] active:bg-[#F2F2F7] transition-colors flex items-center justify-center shrink-0 cursor-pointer ${
+            isSideways
+              ? 'w-14 h-full'
+              : isLandscape
+                ? 'h-12 w-full'
+                : 'h-14 w-full'
           }`}
           aria-label="Inserir código do boleto"
         >
-          <span className="whitespace-nowrap font-inter text-[14px] text-[#585666] tracking-tight">
+          <span
+            className={`whitespace-nowrap font-inter text-[14px] text-[#585666] tracking-tight ${textRotationClass}`}
+          >
             Inserir código do boleto
           </span>
         </button>
 
-        {/* Bottom Dark Overlay + Photo fallback button */}
-        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-between px-6">
-          {!isLandscape ? (
+        {/* Bottom/Side Dark Overlay + Photo fallback button */}
+        <div
+          className={`relative z-10 flex-1 bg-black/65 flex items-center px-6 ${
+            isSideways
+              ? 'flex-col justify-between py-6'
+              : 'justify-between'
+          }`}
+        >
+          {!isLandscape && !isSideways ? (
             <span className="font-inter text-[12px] text-white/75">
               Vire o celular na horizontal para ler melhor
             </span>
@@ -431,36 +490,52 @@ export function BarcodeScannerScreen({
           </button>
         </div>
 
-        {/* Center Horizontal Scan Window (transparent over camera!) */}
+        {/* Center Scan Window (transparent over camera!) */}
         <div
-          className={`relative z-10 w-full bg-transparent border-y border-white/25 flex items-center justify-center ${
-            isLandscape ? 'h-[44%]' : 'h-[34%]'
+          className={`relative z-10 bg-transparent flex items-center justify-center ${
+            isSideways
+              ? 'w-[38%] h-full border-x border-white/25'
+              : isLandscape
+                ? 'h-[44%] w-full border-y border-white/25'
+                : 'h-[34%] w-full border-y border-white/25'
           }`}
           aria-label="Área de leitura do código de barras"
         >
           {!cameraError && (
-            <div className="h-[1.5px] w-[78%] bg-[#FF941A]/70 animate-pulse" />
+            <div
+              className={`bg-[#FF941A]/70 animate-pulse ${
+                isSideways ? 'w-[1.5px] h-[75%]' : 'h-[1.5px] w-[78%]'
+              }`}
+            />
           )}
 
           {(cameraError || photoStatus) && (
-            <span className="whitespace-nowrap font-inter text-[12px] text-white/90 px-3 text-center">
+            <span
+              className={`whitespace-nowrap font-inter text-[12px] text-white/90 px-3 text-center ${textRotationClass}`}
+            >
               {photoStatus || cameraError}
             </span>
           )}
         </div>
 
-        {/* Top Dark Overlay + Back Arrow + Instruction */}
+        {/* Top/Side Dark Overlay + Back Arrow + Instruction */}
         <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-center px-12">
           <button
             type="button"
             onClick={onBack}
             aria-label="Voltar"
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white hover:opacity-75 transition-opacity cursor-pointer"
+            className={`absolute w-10 h-10 flex items-center justify-center text-white hover:opacity-75 transition-opacity cursor-pointer ${
+              isSideways
+                ? 'top-5 right-5'
+                : 'left-4 top-1/2 -translate-y-1/2'
+            }`}
           >
-            <ArrowLeft size={20} strokeWidth={1.8} />
+            <ArrowLeft size={20} strokeWidth={1.8} className={textRotationClass} />
           </button>
 
-          <span className="whitespace-nowrap font-inter text-[14px] text-white tracking-tight text-center">
+          <span
+            className={`whitespace-nowrap font-inter text-[14px] text-white tracking-tight text-center ${textRotationClass}`}
+          >
             Escaneie o código de barras do boleto
           </span>
         </div>
