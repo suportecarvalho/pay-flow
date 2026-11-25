@@ -36,7 +36,7 @@ export function AppHeader({
           type="button"
           onClick={onLogout}
           title={onLogout ? 'Sair da conta' : userName}
-          className="w-12 h-12 rounded-[5px] bg-[#585666] overflow-hidden shrink-0 shadow-sm flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+          className="w-12 h-12 rounded-full ring-2 ring-white/25 bg-[#585666] overflow-hidden shrink-0 shadow-sm flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
         >
           {avatarUrl && !imgError ? (
             <img
