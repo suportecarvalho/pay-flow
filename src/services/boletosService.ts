@@ -12,6 +12,7 @@ interface BoletoRow {
   recurring?: boolean;
   shared_with?: string | null;
   owner_email?: string | null;
+  receipt_url?: string | null;
 }
 
 function getLocalKey(userId: string): string {
@@ -47,6 +48,7 @@ function mapRowToBoleto(row: BoletoRow): Boleto {
     recurring: Boolean(row.recurring),
     sharedWith: row.shared_with ?? undefined,
     ownerEmail: row.owner_email ?? undefined,
+    receiptUrl: row.receipt_url ?? undefined,
   };
 }
 
@@ -61,7 +63,7 @@ export async function fetchUserBoletos(
   let query = supabase
     .from('boletos')
     .select(
-      'id, user_id, name, due_date, value, barcode, paid, recurring, shared_with, owner_email'
+      'id, user_id, name, due_date, value, barcode, paid, recurring, shared_with, owner_email, receipt_url'
     )
     .order('created_at', { ascending: false });
 
@@ -127,7 +129,7 @@ export async function createUserBoleto(
       owner_email: input.ownerEmail?.trim().toLowerCase() ?? null,
     })
     .select(
-      'id, user_id, name, due_date, value, barcode, paid, recurring, shared_with, owner_email'
+      'id, user_id, name, due_date, value, barcode, paid, recurring, shared_with, owner_email, receipt_url'
     )
     .single();
 
@@ -184,4 +186,53 @@ export async function deleteUserBoleto(boletoId: string): Promise<void> {
   if (!supabase) return;
 
   await supabase.from('boletos').delete().eq('id', boletoId);
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Falha ao ler o comprovante.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function uploadBoletoReceipt(
+  userId: string,
+  boletoId: string,
+  file: File
+): Promise<string> {
+  let receiptUrl: string | null = null;
+
+  if (supabase) {
+    const ext = file.name.split('.').pop() || 'bin';
+    const path = `${userId}/${boletoId}_${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from('receipts')
+      .upload(path, file, { upsert: true });
+
+    if (!uploadError) {
+      const { data } = supabase.storage.from('receipts').getPublicUrl(path);
+      receiptUrl = data.publicUrl;
+    }
+  }
+
+  // Fallback to data URL if Storage bucket 'receipts' is not yet created
+  if (!receiptUrl) {
+    if (file.size > 1.5 * 1024 * 1024) {
+      throw new Error(
+        'Arquivo maior que 1,5 MB. Crie o bucket "receipts" no Supabase Storage para arquivos grandes.'
+      );
+    }
+    receiptUrl = await fileToDataUrl(file);
+  }
+
+  if (supabase) {
+    await supabase
+      .from('boletos')
+      .update({ receipt_url: receiptUrl })
+      .eq('id', boletoId);
+  }
+
+  return receiptUrl;
 }

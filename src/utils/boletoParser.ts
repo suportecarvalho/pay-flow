@@ -15,11 +15,49 @@ function formatFebrabanFactor(factor: number): string | undefined {
   return `${dd}/${mm}/${yy}`;
 }
 
+export function isPixPayload(rawCode: string | undefined): boolean {
+  if (!rawCode) return false;
+  const trimmed = rawCode.trim();
+  return (
+    trimmed.startsWith('000201') &&
+    trimmed.toLowerCase().includes('br.gov.bcb.pix')
+  );
+}
+
 /**
- * Extracts value (and due date for bank boletos) from 44-digit barcodes
- * or 47/48-digit linhas digitáveis.
+ * Extracts transaction amount (EMV tag 54) from a Pix Copia e Cola QR payload.
+ */
+export function extractPixAmount(pixPayload: string): number | undefined {
+  // EMV TLV: tag 54 + 2-digit length + ASCII decimal amount
+  let idx = 0;
+  while (idx + 4 <= pixPayload.length) {
+    const tag = pixPayload.slice(idx, idx + 2);
+    const len = parseInt(pixPayload.slice(idx + 2, idx + 4), 10);
+    if (Number.isNaN(len) || len < 0 || idx + 4 + len > pixPayload.length) {
+      break;
+    }
+    const val = pixPayload.slice(idx + 4, idx + 4 + len);
+    if (tag === '54') {
+      const num = parseFloat(val);
+      return Number.isFinite(num) && num > 0 ? num : undefined;
+    }
+    idx += 4 + len;
+  }
+  return undefined;
+}
+
+/**
+ * Extracts value (and due date for bank boletos) from 44-digit barcodes,
+ * 47/48-digit linhas digitáveis, or Pix QR payloads.
  */
 export function parseBoletoBarcode(rawCode: string): ParsedBoletoInfo {
+  if (isPixPayload(rawCode)) {
+    return {
+      barcode: rawCode.trim(),
+      value: extractPixAmount(rawCode.trim()),
+    };
+  }
+
   const digits = rawCode.replace(/\D/g, '');
 
   // Utility / Concessionária (energia, água, gás) - 44-digit barcode starting with 8
@@ -223,4 +261,19 @@ export function getBoletoMonthYear(
   }
 
   return { month, year };
+}
+
+export function parseDueDateTimestamp(dueDate: string): number {
+  const parts = dueDate.trim().split('/');
+  if (parts.length !== 3) return Number.MAX_SAFE_INTEGER;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  let year = parseInt(parts[2], 10);
+  if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  if (parts[2].length === 2) year += 2000;
+
+  return new Date(year, month - 1, day).getTime();
 }

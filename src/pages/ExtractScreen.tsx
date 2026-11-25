@@ -1,10 +1,14 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
 import { useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BoletoListItem } from '../components/BoletoListItem';
 import { BoletoTotalBar } from '../components/BoletoTotalBar';
+import { formatCurrencyBRL } from '../data/initialBoletos';
 import type { Boleto } from '../types/boleto';
-import { getBoletoMonthYear } from '../utils/boletoParser';
+import {
+  getBoletoMonthYear,
+  parseDueDateTimestamp,
+} from '../utils/boletoParser';
 
 interface ExtractScreenProps {
   userName?: string;
@@ -40,10 +44,16 @@ export function ExtractScreen({
   const [filterMode, setFilterMode] = useState<'all' | 'month'>('all');
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [search, setSearch] = useState('');
 
-  const paidBoletos = boletos.filter((b) => b.paid);
+  const paidBoletos = boletos
+    .filter((b) => b.paid)
+    .sort(
+      (a, b) =>
+        parseDueDateTimestamp(b.dueDate) - parseDueDateTimestamp(a.dueDate)
+    );
 
-  const filteredBoletos =
+  const monthFiltered =
     filterMode === 'all'
       ? paidBoletos
       : paidBoletos.filter((b) => {
@@ -54,6 +64,12 @@ export function ExtractScreen({
             parsed.year === selectedYear
           );
         });
+
+  const filteredBoletos = search.trim()
+    ? monthFiltered.filter((b) =>
+        b.name.toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : monthFiltered;
 
   const canScroll = filteredBoletos.length > 4;
 
@@ -86,6 +102,33 @@ export function ExtractScreen({
     selectedYear
   ).slice(-2)}`;
 
+  const handleExportCsv = () => {
+    if (filteredBoletos.length === 0) return;
+
+    const header = 'Nome;Vencimento;Valor;Recorrente;Compartilhado';
+    const rows = filteredBoletos.map((b) => {
+      const safeName = `"${b.name.replace(/"/g, '""')}"`;
+      const val = `R$ ${formatCurrencyBRL(b.value)}`;
+      const rec = b.recurring ? 'Sim' : 'Não';
+      const shared = b.sharedWith ? b.sharedWith : '-';
+      return `${safeName};${b.dueDate};${val};${rec};${shared}`;
+    });
+
+    const total = filteredBoletos.reduce((sum, b) => sum + b.value, 0);
+    rows.push(`"TOTAL";;R$ ${formatCurrencyBRL(total)};;`);
+
+    const csv = '\uFEFF' + [header, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `extrato-payboletos-${
+      filterMode === 'month' ? monthLabel.replace('/', '-') : 'todos'
+    }.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
       <AppHeader
@@ -94,64 +137,91 @@ export function ExtractScreen({
         onLogout={onLogout}
       />
 
-      <main className="relative flex-1 min-h-0 flex flex-col pt-7 px-6 overflow-hidden">
+      <main className="relative flex-1 min-h-0 flex flex-col pt-6 px-6 overflow-hidden">
         <div className="pb-3 border-b border-[#E3E3E6] shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
               Meus extratos
             </h2>
-            <span className="font-inter text-[13px] text-[#706E7A]">
-              {filteredBoletos.length}{' '}
-              {filteredBoletos.length === 1 ? 'pago' : 'pagos'}
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span className="font-inter text-[13px] text-[#706E7A]">
+                {filteredBoletos.length}{' '}
+                {filteredBoletos.length === 1 ? 'pago' : 'pagos'}
+              </span>
+              {filteredBoletos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleExportCsv}
+                  title="Exportar extrato CSV"
+                  aria-label="Exportar extrato CSV"
+                  className="p-1.5 rounded-[5px] border border-[#E3E3E6] bg-[#FAFAFC] text-[#585666] hover:text-[#FF941A] hover:border-[#FF941A]/40 transition-colors cursor-pointer"
+                >
+                  <Download size={14} strokeWidth={2} />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Month Filter Bar */}
+          {/* Month Filter & Search Bar */}
           <div className="mt-3 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setFilterMode('all')}
-              className={`px-3 py-1 rounded-[5px] font-inter text-[12px] font-medium transition-colors cursor-pointer ${
-                filterMode === 'all'
-                  ? 'bg-[#FF941A] text-white'
-                  : 'bg-[#FAFAFC] text-[#706E7A] border border-[#E3E3E6] hover:bg-[#F2F2F7]'
-              }`}
-            >
-              Todos
-            </button>
-
-            <div
-              className={`flex items-center rounded-[5px] border transition-colors ${
-                filterMode === 'month'
-                  ? 'border-[#FF941A] bg-[#FF941A]/10 text-[#FF941A]'
-                  : 'border-[#E3E3E6] bg-[#FAFAFC] text-[#585666]'
-              }`}
-            >
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={() => stepMonth(-1)}
-                aria-label="Mês anterior"
-                className="px-2 py-1 hover:opacity-75 transition-opacity cursor-pointer"
+                onClick={() => setFilterMode('all')}
+                className={`px-2.5 py-1 rounded-[5px] font-inter text-[12px] font-medium transition-colors cursor-pointer ${
+                  filterMode === 'all'
+                    ? 'bg-[#FF941A] text-white'
+                    : 'bg-[#FAFAFC] text-[#706E7A] border border-[#E3E3E6] hover:bg-[#F2F2F7]'
+                }`}
               >
-                <ChevronLeft size={15} strokeWidth={2} />
+                Todos
               </button>
 
-              <button
-                type="button"
-                onClick={() => setFilterMode('month')}
-                className="px-2 py-1 font-inter text-[12px] font-semibold cursor-pointer"
+              <div
+                className={`flex items-center rounded-[5px] border transition-colors ${
+                  filterMode === 'month'
+                    ? 'border-[#FF941A] bg-[#FF941A]/10 text-[#FF941A]'
+                    : 'border-[#E3E3E6] bg-[#FAFAFC] text-[#585666]'
+                }`}
               >
-                {monthLabel}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => stepMonth(-1)}
+                  aria-label="Mês anterior"
+                  className="px-1.5 py-1 hover:opacity-75 transition-opacity cursor-pointer"
+                >
+                  <ChevronLeft size={14} strokeWidth={2} />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => stepMonth(1)}
-                aria-label="Próximo mês"
-                className="px-2 py-1 hover:opacity-75 transition-opacity cursor-pointer"
-              >
-                <ChevronRight size={15} strokeWidth={2} />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode('month')}
+                  className="px-1.5 py-1 font-inter text-[12px] font-semibold cursor-pointer"
+                >
+                  {monthLabel}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => stepMonth(1)}
+                  aria-label="Próximo mês"
+                  className="px-1.5 py-1 hover:opacity-75 transition-opacity cursor-pointer"
+                >
+                  <ChevronRight size={14} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-[#FAFAFC] border border-[#E3E3E6] rounded-[5px] px-2 py-1 min-w-0 flex-1 max-w-[130px]">
+              <Search size={13} className="text-[#B1B0B8] shrink-0" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar..."
+                aria-label="Buscar no extrato"
+                className="w-full font-inter text-[12px] text-[#585666] placeholder:text-[#B1B0B8] bg-transparent outline-none"
+              />
             </div>
           </div>
         </div>
@@ -164,9 +234,11 @@ export function ExtractScreen({
           >
             {filteredBoletos.length === 0 ? (
               <div className="py-12 text-center text-sm text-[#706E7A]">
-                {filterMode === 'month'
-                  ? `Nenhum boleto pago em ${monthLabel}.`
-                  : 'Nenhum boleto pago ainda.'}
+                {search.trim()
+                  ? 'Nenhum boleto encontrado.'
+                  : filterMode === 'month'
+                    ? `Nenhum boleto pago em ${monthLabel}.`
+                    : 'Nenhum boleto pago ainda.'}
               </div>
             ) : (
               filteredBoletos.map((boleto) => (

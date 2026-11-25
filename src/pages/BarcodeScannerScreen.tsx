@@ -7,6 +7,7 @@ import {
 import { ArrowLeft, Flashlight, FlashlightOff, ImagePlus, ZoomIn } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
+  isPixPayload,
   isValidBoletoLength,
   isValidFebrabanBarcode,
 } from '../utils/boletoParser';
@@ -205,6 +206,12 @@ export function BarcodeScannerScreen({
       for (const text of candidates) {
         if (!text) continue;
 
+        // 0. Pix QR Code (Pague com Pix)
+        if (isPixPayload(text)) {
+          confirmMatch(text);
+          return true;
+        }
+
         const digits = text.replace(/\D/g, '');
 
         // 1. 44-digit Brazilian boleto: validate FEBRABAN check digit!
@@ -314,7 +321,7 @@ export function BarcodeScannerScreen({
 
         if (DetectorCtor) {
           try {
-            let formats = ['itf', 'code_128', 'ean_13'];
+            let formats = ['itf', 'code_128', 'ean_13', 'qr_code'];
             if (DetectorCtor.getSupportedFormats) {
               const supported = await DetectorCtor.getSupportedFormats();
               formats = formats.filter((f) => supported.includes(f));
@@ -357,6 +364,11 @@ export function BarcodeScannerScreen({
           );
           zbarScanner.setConfig(
             ZBarSymbolType.ZBAR_CODE128,
+            ZBarConfigType.ZBAR_CFG_ENABLE,
+            1
+          );
+          zbarScanner.setConfig(
+            ZBarSymbolType.ZBAR_QRCODE,
             ZBarConfigType.ZBAR_CFG_ENABLE,
             1
           );

@@ -10,6 +10,7 @@ create table if not exists public.boletos (
   recurring boolean not null default false,
   shared_with text,
   owner_email text,
+  receipt_url text,
   created_at timestamptz not null default now()
 );
 
@@ -21,6 +22,9 @@ alter table public.boletos
 
 alter table public.boletos
   add column if not exists owner_email text;
+
+alter table public.boletos
+  add column if not exists receipt_url text;
 
 create index if not exists idx_boletos_user_id on public.boletos (user_id);
 create index if not exists idx_boletos_shared_with on public.boletos (shared_with);

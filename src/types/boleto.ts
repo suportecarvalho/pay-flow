@@ -8,4 +8,5 @@ export interface Boleto {
   recurring?: boolean;
   sharedWith?: string;
   ownerEmail?: string;
+  receiptUrl?: string;
 }

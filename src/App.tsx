@@ -15,6 +15,7 @@ import {
   saveLocalBoletos,
   setBoletoPaidStatus,
   updateUserBoleto,
+  uploadBoletoReceipt,
 } from './services/boletosService';
 import type { Boleto } from './types/boleto';
 import type { AuthUser } from './types/user';
@@ -135,6 +136,17 @@ export function App() {
     }
   };
 
+  const handleAttachReceipt = async (id: string, file: File) => {
+    if (!user) return;
+    const receiptUrl = await uploadBoletoReceipt(user.id, id, file);
+    setBoletos((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, receiptUrl } : b))
+    );
+    setSelectedBoleto((prev) =>
+      prev && prev.id === id ? { ...prev, receiptUrl } : prev
+    );
+  };
+
   const handleLogin = (loggedUser: AuthUser) => {
     setBoletos(loadLocalBoletos(loggedUser.id));
     setUser(loggedUser);
@@ -247,6 +259,7 @@ export function App() {
                 setScreen('insert_boleto');
               }}
               onDelete={handleDeleteBoleto}
+              onAttachReceipt={handleAttachReceipt}
             />
           )}
         </>
