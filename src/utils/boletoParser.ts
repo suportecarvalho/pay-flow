@@ -140,3 +140,22 @@ export function getNextMonthDueDate(dueDate: string): string {
 
   return `${dd}/${mm}/${yy}`;
 }
+
+export function getBoletoMonthYear(
+  dueDate: string
+): { month: number; year: number } | null {
+  const parts = dueDate.trim().split('/');
+  if (parts.length !== 3) return null;
+
+  const month = parseInt(parts[1], 10);
+  let year = parseInt(parts[2], 10);
+  if (Number.isNaN(month) || Number.isNaN(year) || month < 1 || month > 12) {
+    return null;
+  }
+
+  if (parts[2].length === 2) {
+    year += 2000;
+  }
+
+  return { month, year };
+}
