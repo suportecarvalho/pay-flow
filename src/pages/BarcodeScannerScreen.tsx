@@ -466,25 +466,27 @@ export function BarcodeScannerScreen({
 
         {/* Bottom/Side Dark Overlay + Photo fallback button */}
         <div
-          className={`relative z-10 flex-1 bg-black/65 flex items-center px-6 ${
+          className={`relative z-10 bg-black/65 flex items-center px-6 ${
             isSideways
-              ? 'flex-col justify-between py-6'
-              : 'justify-between'
+              ? 'flex-1 flex-col justify-between py-6'
+              : isLandscape
+                ? 'h-12 shrink-0 justify-end'
+                : 'flex-1 justify-between'
           }`}
         >
           {!isLandscape && !isSideways ? (
             <span className="font-inter text-[12px] text-white/75">
               Vire o celular na horizontal para ler melhor
             </span>
-          ) : (
+          ) : !isLandscape ? (
             <span />
-          )}
+          ) : null}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             title="Ler de foto ou print"
             aria-label="Ler código de barras de foto"
-            className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <ImagePlus size={18} strokeWidth={1.8} />
           </button>
@@ -494,17 +496,17 @@ export function BarcodeScannerScreen({
         <div
           className={`relative z-10 bg-transparent flex items-center justify-center ${
             isSideways
-              ? 'w-[38%] h-full border-x border-white/25'
+              ? 'w-[54%] h-full border-x border-white/25'
               : isLandscape
-                ? 'h-[44%] w-full border-y border-white/25'
-                : 'h-[34%] w-full border-y border-white/25'
+                ? 'flex-1 w-full border-y border-white/25'
+                : 'h-[38%] w-full border-y border-white/25'
           }`}
           aria-label="Área de leitura do código de barras"
         >
           {!cameraError && (
             <div
               className={`bg-[#FF941A]/70 animate-pulse ${
-                isSideways ? 'w-[1.5px] h-[75%]' : 'h-[1.5px] w-[78%]'
+                isSideways ? 'w-[1.5px] h-[78%]' : 'h-[1.5px] w-[82%]'
               }`}
             />
           )}
@@ -519,7 +521,11 @@ export function BarcodeScannerScreen({
         </div>
 
         {/* Top/Side Dark Overlay + Back Arrow + Instruction */}
-        <div className="relative z-10 flex-1 bg-black/65 flex items-center justify-center px-12">
+        <div
+          className={`relative z-10 bg-black/65 flex items-center justify-center px-12 ${
+            isLandscape ? 'h-12 shrink-0' : 'flex-1'
+          }`}
+        >
           <button
             type="button"
             onClick={onBack}
