@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BoletoListItem } from '../components/BoletoListItem';
@@ -22,6 +23,7 @@ export function HomeScreen({
   onSelectBoleto,
 }: HomeScreenProps) {
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const unpaidBoletos = boletos
     .filter((b) => !b.paid)
@@ -87,16 +89,31 @@ export function HomeScreen({
       </AppHeader>
 
       {/* Meus boletos list */}
-      <main className="relative flex-1 min-h-0 flex flex-col pt-14 px-6 overflow-hidden">
-        <div className="pb-3 border-b border-[#E3E3E6] shrink-0">
-          <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
-            Meus boletos
-          </h2>
+      <main className="relative flex-1 min-h-0 flex flex-col pt-16 px-6 overflow-hidden">
+        <div className="pb-4 border-b border-[#E3E3E6] shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
+              Meus boletos
+            </h2>
 
-          {unpaidBoletos.length > 0 && (
+            {unpaidBoletos.length > 0 && !searchOpen && (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                title="Buscar boleto"
+                aria-label="Abrir busca"
+                className="p-1.5 rounded-[5px] text-[#706E7A] hover:text-[#FF941A] hover:bg-[#FAFAFC] transition-colors cursor-pointer"
+              >
+                <Search size={18} strokeWidth={1.8} />
+              </button>
+            )}
+          </div>
+
+          {searchOpen && (
             <SearchBar
               value={search}
               onChange={setSearch}
+              onClose={() => setSearchOpen(false)}
               placeholder="Buscar boleto..."
             />
           )}

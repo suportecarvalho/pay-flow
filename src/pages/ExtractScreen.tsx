@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
 import { useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BoletoListItem } from '../components/BoletoListItem';
@@ -46,6 +46,7 @@ export function ExtractScreen({
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const paidBoletos = boletos
     .filter((b) => b.paid)
@@ -144,17 +145,28 @@ export function ExtractScreen({
         onLogout={onLogout}
       />
 
-      <main className="relative flex-1 min-h-0 flex flex-col pt-6 px-6 overflow-hidden">
+      <main className="relative flex-1 min-h-0 flex flex-col pt-7 px-6 overflow-hidden">
         <div className="pb-3 border-b border-[#E3E3E6] shrink-0">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-lexend font-semibold text-[20px] text-[#585666]">
               Meus extratos
             </h2>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <span className="font-inter text-[13px] text-[#706E7A]">
                 {filteredBoletos.length}{' '}
                 {filteredBoletos.length === 1 ? 'pago' : 'pagos'}
               </span>
+              {paidBoletos.length > 0 && !searchOpen && (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  title="Buscar no extrato"
+                  aria-label="Abrir busca no extrato"
+                  className="p-1.5 rounded-[5px] text-[#706E7A] hover:text-[#FF941A] hover:bg-[#FAFAFC] transition-colors cursor-pointer"
+                >
+                  <Search size={16} strokeWidth={1.8} />
+                </button>
+              )}
               {filteredBoletos.length > 0 && (
                 <button
                   type="button"
@@ -218,11 +230,14 @@ export function ExtractScreen({
             </div>
           </div>
 
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder="Buscar no extrato..."
-          />
+          {searchOpen && (
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              onClose={() => setSearchOpen(false)}
+              placeholder="Buscar no extrato..."
+            />
+          )}
         </div>
 
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
