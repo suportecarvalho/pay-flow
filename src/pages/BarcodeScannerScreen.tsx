@@ -466,12 +466,12 @@ export function BarcodeScannerScreen({
 
         {/* Bottom/Side Dark Overlay + Photo fallback button */}
         <div
-          className={`relative z-10 bg-black/65 flex items-center px-6 ${
+          className={`relative z-10 min-w-0 min-h-0 bg-black/65 flex items-center px-4 ${
             isSideways
               ? 'flex-1 flex-col justify-between py-6'
               : isLandscape
-                ? 'h-12 shrink-0 justify-end'
-                : 'flex-1 justify-between'
+                ? 'h-12 shrink-0 justify-end px-6'
+                : 'flex-1 justify-between px-6'
           }`}
         >
           {!isLandscape && !isSideways ? (
@@ -496,10 +496,10 @@ export function BarcodeScannerScreen({
         <div
           className={`relative z-10 bg-transparent flex items-center justify-center ${
             isSideways
-              ? 'w-[54%] h-full border-x border-white/25'
+              ? 'w-[54%] h-full shrink-0 border-x border-white/25'
               : isLandscape
-                ? 'flex-1 w-full border-y border-white/25'
-                : 'h-[38%] w-full border-y border-white/25'
+                ? 'flex-1 min-h-0 w-full border-y border-white/25'
+                : 'h-[38%] w-full shrink-0 border-y border-white/25'
           }`}
           aria-label="Área de leitura do código de barras"
         >
@@ -522,8 +522,8 @@ export function BarcodeScannerScreen({
 
         {/* Top/Side Dark Overlay + Back Arrow + Instruction */}
         <div
-          className={`relative z-10 bg-black/65 flex items-center justify-center px-12 ${
-            isLandscape ? 'h-12 shrink-0' : 'flex-1'
+          className={`relative z-10 min-w-0 min-h-0 bg-black/65 flex items-center justify-center ${
+            isLandscape ? 'h-12 shrink-0 px-12' : 'flex-1'
           }`}
         >
           <button
@@ -532,7 +532,7 @@ export function BarcodeScannerScreen({
             aria-label="Voltar"
             className={`absolute w-10 h-10 flex items-center justify-center text-white hover:opacity-75 transition-opacity cursor-pointer ${
               isSideways
-                ? 'top-5 right-5'
+                ? 'top-5 right-1/2 translate-x-1/2'
                 : 'left-4 top-1/2 -translate-y-1/2'
             }`}
           >
@@ -540,7 +540,9 @@ export function BarcodeScannerScreen({
           </button>
 
           <span
-            className={`whitespace-nowrap font-inter text-[14px] text-white tracking-tight text-center ${textRotationClass}`}
+            className={`whitespace-nowrap font-inter text-[14px] text-white tracking-tight text-center ${
+              isSideways ? 'absolute' : ''
+            } ${textRotationClass}`}
           >
             Escaneie o código de barras do boleto
           </span>
