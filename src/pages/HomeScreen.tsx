@@ -104,7 +104,7 @@ export function HomeScreen({
                 aria-label="Abrir busca"
                 className="p-1.5 rounded-[5px] text-[#706E7A] hover:text-[#FF941A] hover:bg-[#FAFAFC] transition-colors cursor-pointer"
               >
-                <Search size={18} strokeWidth={1.8} />
+                <Search size={22} strokeWidth={1.9} />
               </button>
             )}
           </div>
